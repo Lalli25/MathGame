@@ -177,7 +177,7 @@
     let bases = { first:false, second:false, third:false };
 
     // At-bat state
-    let batting=false, swing=false, ballX=40, ballY=220, ballV=5.6, plateX=260; // faster ball
+    let batting=false, swing=false, ballX=40, ballY=220, ballV=6.2, plateX=260; // faster ball
     let countdownTimer=null, countingDown=false;
 
     function fmtTime(s){ const m=Math.floor(s/60), r=s%60; return `${m}:${String(r).padStart(2,'0')}` }
@@ -245,13 +245,16 @@
         ui.svg.appendChild(labelNear(BX,BY,62,(angD+90)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
       return {prompt, steps, x, draw}; }
 
-    function genBis(){ // total angle fixed; D at midpoint
-      const total=[80,100,120,140][ri(0,3)], half=total/2; const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x;
+    function genBis(){ // bisector; choose params to avoid identity and keep integer x via equality
+      const total=[80,100,120,140][ri(0,3)], half=total/2;
+      const a=ri(1,4); let c=ri(1,4); while(c===a) c=ri(1,4); // avoid a==c (identity)
+      const x=ri(5,70); const b=ri(-10,25); const d=a*x + b - c*x; // ensures equality at chosen integer x
       const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
-      const steps=`Bisector makes two equal angles of ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      const steps=`Bisector ⇒ the two angles are congruent. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
+        // equal ticks
         ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'var(--tick)',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
         ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
         ui.svg.appendChild(labelNear(BX,BY,64,20+(half/2),`${a}x ${b>=0?'+':''}${b}°`));
@@ -284,7 +287,7 @@
         ui.svg.appendChild(labelNear(BX,BY,64,(200+290)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
       return {prompt, steps, x, draw}; }
 
-    const GENS=[genRight, genSupp, genComp, genBis, genPerp, genVertical];
+    const GENS=[genRight, genSupp, genComp, genBis, genPerp, genVertical, genVertical];
 
     function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
 
@@ -327,9 +330,9 @@
 
     function onSwing(){ if(!batting) return; swing=true; const dist=Math.abs(ballX - plateX); let outcome='out';
       // tighter windows make HR harder
-      if(dist <= 8) outcome='homer';
-      else if(dist <= 18) outcome='triple';
-      else if(dist <= 30) outcome='double';
+      if(dist <= 6) outcome='homer';
+      else if(dist <= 16) outcome='triple';
+      else if(dist <= 28) outcome='double';
       else if(dist <= 44) outcome='single';
       resolveSwing(outcome);
     }
@@ -389,6 +392,12 @@
     ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
     window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); onSwing(); } });
     ui.atbat.addEventListener('click', onSwing);
+
+    // Initial draw
+    drawBase(); drawRunners();
+  </script>
+</body>
+</html>
 
     // Initial draw
     drawBase(); drawRunners();
