@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Angle Arena — Algebra & Angles Game</title>
+  <style>
+    :root{
+      --bg:#0b1020;--panel:#0f172a;--ink:#e5e7eb;--muted:#9ca3af;--accent:#38bdf8;--good:#10b981;--bad:#f43f5e;--warn:#f59e0b
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;background:radial-gradient(1200px 800px at 50% -100px,#111a33,#0b1020 60%);color:var(--ink);}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{margin:0;font-size:clamp(20px,3vw,32px)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button,select,input{background:var(--panel);color:var(--ink);border:1px solid #1f2937;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+    button:hover{border-color:#334155}
+    .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:14px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:rgba(13,24,48,.8);border:1px solid #1e293b;border-radius:18px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+    .hud{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+    .badge{background:#0a1328;border:1px solid #1f2b40;border-radius:999px;padding:6px 10px;font-weight:700}
+    .accent{color:var(--accent)}
+    .good{color:var(--good)}
+    .bad{color:var(--bad)}
+    .warn{color:var(--warn)}
+    .equation{font-size:clamp(18px,2.2vw,26px);font-weight:800;letter-spacing:.3px;margin:0}
+    .sub{opacity:.8;font-size:14px;margin-top:6px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+    .row input[type="number"]{width:120px}
+    .steps{background:#0a1328;border:1px dashed #22324a;border-radius:12px;padding:10px;margin-top:8px}
+    .diagram{background:linear-gradient(180deg,#0e162f,#0a1226);border:1px solid #1e293b;border-radius:14px;height:280px;display:grid;place-items:center}
+    .small{font-size:12px;color:var(--muted)}
+    .leader{max-height:260px;overflow:auto}
+    .leader table{width:100%;border-collapse:collapse}
+    .leader th,.leader td{padding:8px;border-bottom:1px solid #22324a;text-align:left}
+    .toast{position:fixed;inset:auto 0 20px 0;display:grid;place-items:center;pointer-events:none}
+    .toast > div{background:#071026;border:1px solid #1b2a45;padding:10px 14px;border-radius:999px}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎯 Angle Arena <span class="small">— Solve for <em>x</em> with angle relationships</span></h1>
+      <div class="controls">
+        <select id="mode">
+          <option value="classic" selected>Classic (3 min)</option>
+          <option value="endless">Endless</option>
+          <option value="practice">Practice (no timer)</option>
+        </select>
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button id="startBtn">Start</button>
+        <button id="hintBtn" disabled>Hint</button>
+        <button id="skipBtn" disabled>Skip</button>
+      </div>
+    </header>
+
+    <div class="hud">
+      <div class="badge">⏱️ Time: <span id="time">—</span></div>
+      <div class="badge">🏆 Score: <span id="score">0</span></div>
+      <div class="badge">🔥 Streak: <span id="streak">0</span>x</div>
+      <div class="badge">⭐ Best: <span id="best">0</span></div>
+      <div class="badge">👤 Name: <input id="player" placeholder="(optional)"/></div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <p id="prompt" class="equation">Press <span class="accent">Start</span> to begin.</p>
+        <p id="subprompt" class="sub"></p>
+
+        <div class="row">
+          <label>Answer for <strong>x</strong>:</label>
+          <input id="answer" type="number" step="1" inputmode="numeric" />
+          <button id="checkBtn" disabled>Check</button>
+          <span id="feedback" class="small"></span>
+        </div>
+
+        <div id="bonusArea" class="row hidden">
+          <label>Bonus: m∠ asked?</label>
+          <input id="bonusAns" type="number" step="1" />
+          <button id="bonusBtn">Check Bonus</button>
+          <span id="bonusFeedback" class="small"></span>
+        </div>
+
+        <div class="steps" id="steps" hidden></div>
+      </section>
+
+      <aside class="card">
+        <div class="diagram">
+          <svg id="svg" viewBox="0 0 480 280" width="100%" height="100%" aria-label="Angle diagram"></svg>
+        </div>
+        <div class="row" style="justify-content:space-between; margin-top:10px;">
+          <div class="small">Relationships in play: <span id="tags">—</span></div>
+          <button id="revealBtn">Show Work</button>
+        </div>
+        <details style="margin-top:8px;">
+          <summary>How scoring works</summary>
+          <ul class="small">
+            <li>Base 100 pts for a correct x.</li>
+            <li>Time bonus up to +50 (faster = more).</li>
+            <li>Streak multiplier: ×(1 + streak/5).</li>
+            <li>Bonus angle value: +25 if asked.</li>
+          </ul>
+        </details>
+        <details style="margin-top:8px;">
+          <summary>Content covered</summary>
+          <ul class="small">
+            <li>Complementary / Supplementary / Straight / Right angles</li>
+            <li>Perpendicular (right) / Congruent / Adjacent</li>
+            <li>Angle bisectors</li>
+            <li>Algebra with linear expressions (solve for x)</li>
+          </ul>
+        </details>
+      </aside>
+    </div>
+
+    <section class="card" style="margin-top:16px;">
+      <h3 style="margin-top:0;">🏅 Local Leaderboard</h3>
+      <div class="leader" id="leader"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <script>
+    // ====== Utilities ======
+    const $ = sel => document.querySelector(sel);
+    const ui = {
+      mode: $('#mode'), diff: $('#difficulty'), start: $('#startBtn'), hint: $('#hintBtn'), skip: $('#skipBtn'),
+      time: $('#time'), score: $('#score'), streak: $('#streak'), best: $('#best'), player: $('#player'),
+      prompt: $('#prompt'), subprompt: $('#subprompt'), ans: $('#answer'), check: $('#checkBtn'), feedback: $('#feedback'),
+      steps: $('#steps'), reveal: $('#revealBtn'), tags: $('#tags'), svg: $('#svg'),
+      bonusRow: $('#bonusArea'), bonusAns: $('#bonusAns'), bonusBtn: $('#bonusBtn'), bonusFeedback: $('#bonusFeedback'),
+      leader: $('#leader'), toast: $('#toast')
+    };
+
+    const store = {
+      best: Number(localStorage.getItem('angle_arena_best')||0),
+      board: JSON.parse(localStorage.getItem('angle_arena_board')||'[]')
+    };
+    ui.best.textContent = store.best;
+
+    function toast(msg){
+      ui.toast.innerHTML = `<div>${msg}</div>`;
+      setTimeout(()=> ui.toast.innerHTML = '', 1400);
+    }
+
+    // Simple PRNG for reproducible rounds
+    function rng(seed){
+      let s = seed >>> 0; return ()=> (s = (s*1664525 + 1013904223) >>> 0) / 2**32;
+    }
+
+    // ====== Game State ======
+    let clock = 0, timer = null, running = false, streak = 0, score = 0, roundStart = 0;
+    let genRand = Math.random; // will be reset each game with seed
+    let current = null; // problem object
+
+    ui.start.addEventListener('click', startGame);
+    ui.check.addEventListener('click', checkAnswer);
+    ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+    ui.reveal.addEventListener('click', ()=> ui.steps.hidden = !ui.steps.hidden);
+    ui.hint.addEventListener('click', giveHint);
+    ui.skip.addEventListener('click', nextProblem);
+    ui.bonusBtn.addEventListener('click', checkBonus);
+
+    function startGame(){
+      // seed by time and name for friendly competition
+      const seed = (Date.now() ^ (ui.player.value||'class').split('').reduce((a,c)=>a+c.charCodeAt(0),0)) >>> 0;
+      genRand = rng(seed);
+      running = true; score = 0; streak = 0; updateHUD();
+      enablePlay(true);
+      if (ui.mode.value === 'classic') { clock = 180; startTimer(); }
+      else if (ui.mode.value === 'endless') { clock = 0; ui.time.textContent = '∞'; }
+      else { clock = 0; ui.time.textContent = '—'; }
+      nextProblem(true);
+    }
+
+    function startTimer(){
+      clearInterval(timer);
+      ui.time.textContent = fmt(clock);
+      timer = setInterval(()=>{
+        clock--; ui.time.textContent = fmt(clock);
+        if(clock<=0){ endGame(); }
+      },1000);
+    }
+
+    function endGame(){
+      clearInterval(timer); running = false; enablePlay(false);
+      // persist best + leaderboard
+      if (score > store.best){ store.best = score; localStorage.setItem('angle_arena_best', String(store.best)); }
+      const name = (ui.player.value||'Player');
+      store.board.push({name, score, when: new Date().toLocaleString()});
+      store.board.sort((a,b)=>b.score-a.score); store.board = store.board.slice(0,20);
+      localStorage.setItem('angle_arena_board', JSON.stringify(store.board));
+      ui.best.textContent = store.best;
+      renderBoard();
+      toast('🏁 Time! Great run.');
+    }
+
+    function enablePlay(on){
+      ui.hint.disabled = !on; ui.skip.disabled = !on; ui.check.disabled = !on; ui.ans.disabled = !on; ui.bonusBtn.disabled = !on;
+      if(on){ ui.ans.focus(); }
+    }
+
+    function updateHUD(){
+      ui.score.textContent = score;
+      ui.streak.textContent = streak;
+    }
+
+    function fmt(s){ const m = Math.floor(s/60), r = s%60; return `${m}:${String(r).padStart(2,'0')}`; }
+
+    // ====== Problem Generation ======
+    // Each generator returns: { prompt, sub, stepsHtml, tags:[...], x, hasBonus, bonusPrompt, bonusAnswer, diagram: fn(svg) }
+
+    function randInt(a,b){ return Math.floor(genRand()*(b-a+1))+a; }
+    function choice(arr){ return arr[Math.floor(genRand()*arr.length)]; }
+
+    function nextProblem(first=false){
+      ui.feedback.textContent = ''; ui.bonusFeedback.textContent = '';
+      ui.bonusRow.classList.add('hidden'); ui.steps.hidden = true; ui.ans.value=''; ui.bonusAns.value='';
+      // pick a type based on difficulty
+      const d = ui.diff.value;
+      const pool = [genComplementary, genSupplementary, genRight, genStraight, genCongruent, genAdjacent, genBisector, genPerpendicular];
+      let gens = pool;
+      if(d==='easy') gens = [genComplementary, genSupplementary, genRight, genCongruent];
+      if(d==='hard') gens = pool.concat([genDoubleExpr]);
+      const maker = choice(gens);
+      current = maker();
+      roundStart = Date.now();
+      // paint UI
+      ui.prompt.innerHTML = current.prompt;
+      ui.subprompt.textContent = current.sub || '';
+      ui.tags.textContent = current.tags.join(', ');
+      drawDiagram(current.diagram);
+      if (current.hasBonus){ ui.bonusRow.classList.remove('hidden'); $('#bonusArea label').textContent = current.bonusPrompt; }
+    }
+
+    // ---- Diagram helpers ----
+    function drawDiagram(draw){
+      const svg = ui.svg; svg.innerHTML = '';
+      if(!draw){ svg.innerHTML = '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af">Diagram appears here</text>'; return; }
+      // background grid
+      let bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x','0'); bg.setAttribute('y','0'); bg.setAttribute('width','480'); bg.setAttribute('height','280'); bg.setAttribute('fill','#0c1530');
+      svg.appendChild(bg);
+      // call drawer
+      draw(svg);
+    }
+
+    function addLine(svg,x1,y1,x2,y2,opts={}){
+      const el = document.createElementNS('http://www.w3.org/2000/svg','line');
+      el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2);
+      el.setAttribute('stroke', opts.stroke||'#cbd5e1');
+      el.setAttribute('stroke-width', opts.w||4);
+      el.setAttribute('marker-end', opts.arrow? 'url(#arrow)': '');
+      svg.appendChild(el); return el;
+    }
+    function addText(svg,x,y,t){ const el = document.createElementNS('http://www.w3.org/2000/svg','text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill','#e5e7eb'); el.setAttribute('font-size','16'); el.textContent = t; svg.appendChild(el); return el; }
+    function addArc(svg,cx,cy,r,a1,a2,color='#38bdf8'){
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const p1 = polar(cx,cy,r,a1), p2 = polar(cx,cy,r,a2); const laf = (a2-a1)<=180? 0:1;
+      const d = `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${laf} 1 ${p2.x} ${p2.y}`;
+      path.setAttribute('d',d); path.setAttribute('stroke',color); path.setAttribute('fill','none'); path.setAttribute('stroke-width','3'); svg.appendChild(path);
+      return path;
+    }
+    function polar(cx,cy,r,a){ const rad = a*Math.PI/180; return {x: cx + r*Math.cos(rad), y: cy - r*Math.sin(rad)}; }
+
+    // ---- Generators ----
+    function genComplementary(){
+      // (ax + b) + (cx + d) = 90
+      const a=choice([1,2,3]), c=choice([1,2]);
+      let x=randInt(2,20);
+      const b=randInt(0,20), d=randInt(0,20);
+      const A=a*x+b, C=c*x+d; const sum=A+C; // adjust to 90
+      const diff = 90 - sum; // make equation true at our x
+      // Push d so it balances
+      const d2 = d + diff;
+      const prompt = `∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and ∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>. If ∠ABD and ∠DBC are <b class="accent">complementary</b>, solve for x.`;
+      const steps = `Because complementary angles sum to 90°, set up: <br><b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = 90</b><br>Combine like terms → ${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = 90<br>Subtract ${(b+d2)} from both sides → ${(a+c)}x = ${90-(b+d2)}<br>Divide by ${(a+c)} → <b>x = ${(90-(b+d2))/(a+c)}</b>`;
+      const tags=['complementary','adjacent','algebra'];
+      const sub = 'Adjacent angles that add to 90°.';
+      const sol = (90-(b+d2))/(a+c);
+      const B = 240, O={x:120,y:200};
+      function diagram(svg){
+        // simple right-ish figure illustrating two adjacent acute angles
+        addLine(svg, O.x, O.y, O.x+220, O.y, {w:5});
+        addLine(svg, O.x, O.y, O.x+80, O.y-140, {w:5});
+        addArc(svg, O.x, O.y, 40, 0, 60);
+        addArc(svg, O.x, O.y, 40, 60, 90);
+        addText(svg, O.x+45, O.y-10, `${a}x ${b>=0?'+':''}${b}°`);
+        addText(svg, O.x+10, O.y-50, `${c}x ${d2>=0?'+':''}${d2}°`);
+      }
+      return {prompt, sub, stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:false};
+    }
+
+    function genSupplementary(){
+      const a=choice([1,2,3]), c=choice([1,2,3]); let x=randInt(2,20); const b=randInt(0,40), d=randInt(0,40);
+      const A=a*x+b, C=c*x+d; const diff=180-(A+C); const d2=d+diff;
+      const prompt = `∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and ∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>. If ∠ABD and ∠DBC are <b class="accent">supplementary</b>, solve for x.`;
+      const steps = `Supplementary angles sum to 180° → <b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = 180</b><br>Combine → ${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = 180<br>Subtract ${(b+d2)} → ${(a+c)}x = ${180-(b+d2)}<br>Divide ${(a+c)} → <b>x = ${(180-(b+d2))/(a+c)}</b>`;
+      const tags=['supplementary','straight','adjacent','algebra'];
+      function diagram(svg){
+        const O={x:160,y:190};
+        addLine(svg,O.x-130,O.y,O.x+180,O.y,{w:5});
+        addLine(svg,O.x,O.y,O.x+40,O.y-150,{w:5});
+        addArc(svg,O.x,O.y,46,0,120);
+        addArc(svg,O.x,O.y,46,120,180);
+        addText(svg,O.x+50,O.y-20,`${a}x ${b>=0?'+':''}${b}°`);
+        addText(svg,O.x-70,O.y-10,`${c}x ${d2>=0?'+':''}${d2}°`);
+      }
+      const sol=(180-(b+d2))/(a+c);
+      return {prompt, sub:'Adjacent angles on a straight line add to 180°.', stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:false};
+    }
+
+    function genRight(){
+      const a=choice([1,2,3,4]); const b=randInt(-10,40);
+      const prompt = `m∠ABC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>. If ∠ABC is a <b class="accent">right angle</b>, solve for x.`;
+      const steps = `Right angle measures 90° → <b>${a}x ${b>=0?'+':''}${b} = 90</b><br>Subtract ${b>=0?b: '('+b+')'} → ${a}x = ${90-b}<br>Divide by ${a} → <b>x = ${(90-b)/a}</b>`;
+      const tags=['right','perpendicular'];
+      function diagram(svg){
+        const O={x:200,y:190};
+        addLine(svg,O.x-140,O.y,O.x+140,O.y,{w:5});
+        addLine(svg,O.x,O.y,O.x,O.y-160,{w:5});
+        addArc(svg,O.x,O.y,38,0,90,'#22d3ee');
+        addText(svg,O.x+10,O.y-10,`${a}x ${b>=0?'+':''}${b}°`);
+      }
+      const sol=(90-b)/a;
+      return {prompt, sub:'Right angle = 90°.', stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:false};
+    }
+
+    function genStraight(){
+      const a=choice([1,2,3,4]); const b=randInt(-10,50);
+      const prompt = `m∠ABC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>. If ∠ABC is a <b class="accent">straight angle</b>, solve for x.`;
+      const steps = `Straight angle = 180° → <b>${a}x ${b>=0?'+':''}${b} = 180</b><br>${a}x = ${180-b}<br>x = ${(180-b)/a}`;
+      const tags=['straight'];
+      function diagram(svg){
+        const O={x:200,y:180}; addLine(svg,O.x-160,O.y,O.x+160,O.y,{w:5}); addArc(svg,O.x,O.y,44,0,180); addText(svg,O.x-10,O.y-10,`${a}x ${b>=0?'+':''}${b}°`);
+      }
+      return {prompt, sub:'Straight angle = 180°.', stepsHtml:steps, tags, x:(180-b)/a, diagram:diagram, hasBonus:false};
+    }
+
+    function genCongruent(){
+      const a=choice([1,2,3,4]), c=choice([1,2,3,4]); const b=randInt(0,30), d=randInt(0,30);
+      const x=randInt(2,20); const A=a*x+b; const C=c*x+d; // set equal
+      const diff=A-C; const d2=d+diff;
+      const prompt = `∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and ∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span> are <b class="accent">congruent</b>. Solve for x.`;
+      const steps = `Congruent → set equal: <b>${a}x ${b>=0?'+':''}${b} = ${c}x ${d2>=0?'+':''}${d2}</b><br>Subtract ${c}x: ${(a-c)}x ${b>=0?'+':''}${b} = ${d2}<br>Subtract ${b}: ${(a-c)}x = ${d2-b}<br>Divide ${(a-c)||1}: <b>x = ${(d2-b)/(a-c)}</b>`;
+      const tags=['congruent','algebra'];
+      function diagram(svg){
+        const O={x:150,y:190}; addLine(svg,O.x-120,O.y,O.x+200,O.y,{w:5}); addLine(svg,O.x,O.y,O.x+70,O.y-120,{w:5}); addArc(svg,O.x,O.y,42,0,70); addArc(svg,O.x,O.y,42,70,140);
+        addText(svg,O.x+40,O.y-10,`${a}x ${b>=0?'+':''}${b}°`); addText(svg,O.x+5,O.y-48,`${c}x ${d2>=0?'+':''}${d2}°`);
+      }
+      return {prompt, sub:'Congruent angles have equal measure.', stepsHtml:steps, tags, x:(d2-b)/(a-c), diagram:diagram, hasBonus:false};
+    }
+
+    function genAdjacent(){
+      // Given m∠ABC = k (number) and its parts expressions add to that
+      const total = choice([90,120,135,150,160,180]);
+      const a=choice([1,2,3,4]), c=choice([1,2,3]); const x=randInt(2,20); const b=randInt(0,30), d=randInt(0,30);
+      // Adjust d so equality holds
+      const diff = total - (a*x+b + c*x+d); const d2 = d + diff;
+      const prompt = `Ray BD splits ∠ABC. If m∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>, m∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>, and m∠ABC = <b>${total}°</b>, solve for x.`;
+      const steps = `Adjacent parts add to the whole: <b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = ${total}</b><br>Combine → ${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = ${total}<br>${(a+c)}x = ${total-(b+d2)}<br>x = ${(total-(b+d2))/(a+c)}`;
+      const tags=['adjacent','angle addition'];
+      function diagram(svg){
+        const O={x:200,y:200}; addLine(svg,O.x-150,O.y,O.x+180,O.y,{w:5}); addLine(svg,O.x,O.y,O.x+60,O.y-120,{w:5}); addArc(svg,O.x,O.y,44,0,40); addArc(svg,O.x,O.y,44,40, 40+(total>150?120:100));
+        addText(svg,O.x+40,O.y-10,`${a}x ${b>=0?'+':''}${b}°`); addText(svg,O.x+6,O.y-50,`${c}x ${d2>=0?'+':''}${d2}°`); addText(svg,O.x+110,O.y+20,`∠ABC ${total}°`);
+      }
+      const sol=(total-(b+d2))/(a+c);
+      return {prompt, sub:'Angle Addition Postulate.', stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:false};
+    }
+
+    function genBisector(){
+      // If BD bisects ABC, ABD = DBC. Optionally give ABC total for bonus.
+      const total = choice([80,100,120,140]); const half = total/2;
+      const a=choice([1,2,3,4]), b=randInt(0,24); const c=choice([1,2,3,4]), d=randInt(0,24);
+      const x=randInt(2,20); const A=a*x+b; const diff = half - A; const b2 = b + diff; // adjust b so A becomes half
+      const prompt = `Ray BD <b class="accent">bisects</b> ∠ABC. If m∠ABD = <span class="accent">${a}x ${b2>=0?'+':''}${b2}°</span>, m∠DBC = <span class="accent">${c}x ${d>=0?'+':''}${d}°</span>, and m∠ABC = ${total}°, solve for x.`;
+      const steps = `Bisector → two equal parts: m∠ABD = m∠DBC = ${half}°.<br>Set expressions equal: <b>${a}x ${b2>=0?'+':''}${b2} = ${c}x ${d>=0?'+':''}${d}</b><br>Move x terms → ${(a-c)}x = ${d-b2}<br>x = ${(d-b2)/(a-c)}<br>(Check) Each part = ${half}°`;
+      const tags=['bisector','congruent','angle addition'];
+      function diagram(svg){
+        const O={x:220,y:190}; addLine(svg,O.x-150,O.y,O.x+170,O.y,{w:5}); addLine(svg,O.x,O.y,O.x+20,O.y-150,{w:5}); addArc(svg,O.x,O.y,44,0,half); addArc(svg,O.x,O.y,44,half, total);
+        addText(svg,O.x+36,O.y-10,`${a}x ${b2>=0?'+':''}${b2}°`); addText(svg,O.x+6,O.y-56,`${c}x ${d>=0?'+':''}${d}°`); addText(svg,O.x+90,O.y+22,`∠ABC ${total}°`);
+      }
+      const sol=(d-b2)/(a-c);
+      return {prompt, sub:'A bisector creates two congruent angles.', stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:false};
+    }
+
+    function genPerpendicular(){
+      // Perpendicular rays create a right angle; use one expression and the other numeric
+      const a=choice([1,2,3,4]); const b=randInt(-10,40); const other=choice([20,30,40,50,60,70]);
+      const prompt = `Ray AB ⟂ Ray AC at A. If m∠BAC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and it is a right angle, solve for x.`;
+      const steps = `Perpendicular ⇒ right angle (90°) → <b>${a}x ${b>=0?'+':''}${b} = 90</b><br>x = ${(90-b)/a}`;
+      const tags=['perpendicular','right'];
+      function diagram(svg){ const O={x:200,y:190}; addLine(svg,O.x-150,O.y,O.x+150,O.y,{w:5}); addLine(svg,O.x,O.y,O.x,O.y-160,{w:5}); addArc(svg,O.x,O.y,40,0,90); addText(svg,O.x+12,O.y-12,`${a}x ${b>=0?'+':''}${b}°`); }
+      return {prompt, sub:'Perpendicular lines form 90°.', stepsHtml:steps, tags, x:(90-b)/a, diagram:diagram, hasBonus:false};
+    }
+
+    function genDoubleExpr(){
+      // Hard mode: (ax+b) + (cx+d) = given (90/180/variable)
+      const total = choice([90,120,135,150,180]);
+      const a=choice([2,3,4]), c=choice([1,2,3]); const b=randInt(-10,30), d=randInt(-10,30);
+      const x=randInt(2,20); const sumVal = a*x+b + c*x+d; const adjust = total - sumVal; const d2 = d + adjust;
+      const prompt = `m∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>, m∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>, and m∠ABC = ${total}°. Solve for x and (bonus) find m∠ABD.`;
+      const steps = `Angle addition → <b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = ${total}</b><br>${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = ${total}<br>${(a+c)}x = ${total-(b+d2)}<br>x = ${(total-(b+d2))/(a+c)}`;
+      const tags=['hard','angle addition'];
+      function diagram(svg){ const O={x:210,y:195}; addLine(svg,O.x-150,O.y,O.x+160,O.y,{w:5}); addLine(svg,O.x,O.y,O.x+70,O.y-130,{w:5}); addArc(svg,O.x,O.y,44,0,50); addArc(svg,O.x,O.y,44,50, (total>=150?170:140)); addText(svg,O.x+40,O.y-10,`${a}x ${b>=0?'+':''}${b}°`); addText(svg,O.x+6,O.y-52,`${c}x ${d2>=0?'+':''}${d2}°`); }
+      const sol=(total-(b+d2))/(a+c);
+      return {prompt, sub:'Two linear expressions add to a given angle.', stepsHtml:steps, tags, x:sol, diagram:diagram, hasBonus:true, bonusPrompt:'Find m∠ABD:', bonusAnswer: a*sol + b};
+    }
+
+    // ====== Answer Checking ======
+    function checkAnswer(){ if(!running) return; const val = Number(ui.ans.value); if(Number.isNaN(val)) return;
+      const correct = Math.abs(val - current.x) < 1e-9; // should be integer; tolerant
+      if(correct){
+        const elapsed = (Date.now()-roundStart)/1000; const timeBonus = Math.max(0, Math.round(50 - Math.min(50, elapsed)));
+        streak++; let gain = 100 + timeBonus; gain = Math.round(gain * (1 + streak/5));
+        score += gain; updateHUD();
+        ui.feedback.innerHTML = `✅ Correct! +${gain} (time +${timeBonus}, streak x${streak})`;
+        ui.steps.innerHTML = current.stepsHtml; ui.steps.hidden = false;
+        // Bonus?
+        if(current.hasBonus){ ui.bonusRow.classList.remove('hidden'); ui.bonusFeedback.textContent = ''; }
+        else setTimeout(nextProblem, 700);
+      } else {
+        streak = 0; updateHUD(); ui.feedback.innerHTML = `❌ Not quite. Try again or hit Hint.`;
+      }
+    }
+
+    function checkBonus(){
+      if(!current || !current.hasBonus) return; const v = Number(ui.bonusAns.value);
+      if (Math.abs(v - current.bonusAnswer) < 1e-9){ score += 25; ui.bonusFeedback.textContent = '✅ Bonus correct! +25'; updateHUD(); setTimeout(nextProblem, 600); }
+      else { ui.bonusFeedback.textContent = '❌ Check your x, then plug in.'; }
+    }
+
+    function giveHint(){
+      if(!current) return; ui.steps.hidden=false; toast('💡 Showed the setup — now finish it!');
+    }
+
+    // ====== Leaderboard ======
+    function renderBoard(){
+      const rows = store.board.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.score}</td><td class="small">${r.when}</td></tr>`).join('');
+      ui.leader.innerHTML = `<table><thead><tr><th>#</th><th>Name</th><th>Score</th><th>When</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class="small">No scores yet. Finish a round!</td></tr>'}</tbody></table>`;
+    }
+    renderBoard();
+  </script>
+</body>
+</html>
