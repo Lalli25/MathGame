@@ -3,209 +3,340 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Angle Arena — Fun Geometry Game</title>
+  <title>Angle Ball ⚾ — Geometry at the Ballpark</title>
   <style>
-    :root{--ink:#f8fafc;--muted:#94a3b8;--accent:#38bdf8}
-    *{box-sizing:border-box}
-    body{
-      margin:0;font-family:Segoe UI,Arial,sans-serif;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;
-      background:
-        radial-gradient(1200px 600px at 10% -100px,#1e3a8a 10%,#0f172a 60%),
-        radial-gradient(1000px 500px at 90% -120px,#0ea5e9 5%,transparent 50%),
-        linear-gradient(180deg,#0f172a,#0b1324 60%,#0a1020);
+    :root{
+      --ink:#f8fafc; --muted:#a3b1c6; --accent:#22d3ee; --grass:#0f8a2c; --dirt:#8b5e34;
+      --panel:#0b1324; --line:#e5e7eb; --chalk:#e2e8f0; --sky1:#0ea5e9; --sky2:#0f172a;
     }
-    /* Animated background bits */
-    .bg-layer{position:fixed; inset:0; pointer-events:none; z-index:-1}
-    .stars{position:absolute; inset:0; overflow:hidden}
-    .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:.8;animation: twinkle 3s ease-in-out infinite}
-    @keyframes twinkle{0%,100%{opacity:.2}50%{opacity:1}}
-    .orbs{position:absolute; inset:0; overflow:hidden}
-    .orb{position:absolute; width:220px; height:220px; border-radius:50%; filter:blur(40px); opacity:.15; animation: float 12s ease-in-out infinite}
-    .orb.blue{background:#38bdf8}
-    .orb.purple{background:#a78bfa}
-    .orb.green{background:#22c55e}
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-30px)}}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      color:var(--ink); background:
+        radial-gradient(1200px 600px at 50% -250px, var(--sky1), transparent 65%),
+        linear-gradient(180deg, var(--sky2) 0%, #0b1224 55%, #08111e 100%);
+      overflow-x:hidden;
+    }
 
-    header{padding:20px;text-align:center}
-    h1{margin:0;font-size:32px;color:var(--accent);text-shadow:2px 2px #0f172a}
-    .game{background:rgba(255,255,255,0.08);border:2px solid #334155;border-radius:16px;padding:20px;max-width:860px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,0.6)}
-    .hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
-    .badge{background:#0a1328;border:1px solid #1e293b;border-radius:999px;padding:6px 12px;font-weight:bold}
-    #prompt{font-size:20px;font-weight:800;margin:10px 0;color:#facc15;text-align:center}
-    .diagram{background:#0a1226;border:1px solid #1e293b;border-radius:12px;height:320px;display:grid;place-items:center;margin:12px 0;position:relative}
-    svg{width:100%;height:100%}
-    input,button{padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:var(--ink);font-size:15px}
-    button{cursor:pointer;transition:.2s}
-    button:hover{background:#334155;transform:translateY(-1px)}
-    .steps{background:#0b1224;border:1px dashed #475569;border-radius:8px;padding:10px;margin-top:10px}
-    .feedback{margin-top:6px;font-weight:bold;text-align:center}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
-    .hidden{display:none}
-    .error-badge{display:none;color:#fecaca;background:#450a0a;border:1px solid #7f1d1d;border-radius:999px;padding:6px 10px;font-weight:700}
+    /* Stadium backdrop */
+    .stadium{position:fixed; inset:0; z-index:-1; pointer-events:none}
+    .outfield{position:absolute; left:50%; transform:translateX(-50%); bottom:-120px; width:1600px; height:700px;
+      background:
+       radial-gradient(closest-side at 50% 88%, #0c6f25 0%, #0f8a2c 60%, #0a6a22 100%),
+       repeating-conic-gradient(from 0deg, rgba(255,255,255,.04) 0deg 10deg, rgba(255,255,255,0) 10deg 20deg);
+      border-top-left-radius:70px; border-top-right-radius:70px; filter:drop-shadow(0 -30px 120px rgba(0,0,0,.5));
+    }
+    .bleachers{position:absolute; left:50%; transform:translateX(-50%); bottom:360px; width:1400px; height:180px;
+      background:linear-gradient(180deg,#0c1a35,#08122a); border:1px solid #142a55; border-top-left-radius:50px; border-top-right-radius:50px;
+      box-shadow:0 -20px 80px rgba(0,0,0,.55) inset, 0 20px 80px rgba(0,0,0,.35);
+    }
+    .lights{position:absolute; left:50%; transform:translateX(-50%); bottom:560px; display:flex; gap:420px}
+    .tower{width:120px; height:18px; background:linear-gradient(180deg,#e2e8f0,#94a3b8); border-radius:10px; box-shadow:0 0 40px #e2e8f0}
+
+    /* Layout */
+    .wrap{max-width:1100px; margin:0 auto; padding:20px}
+    header{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+    h1{margin:0; font-size:clamp(22px,3.2vw,34px); color:#e2f3ff; text-shadow:0 2px 0 #06223f}
+    .sub{opacity:.85; font-size:14px}
+
+    .board{display:grid; grid-template-columns:1.2fr .8fr; gap:16px; margin-top:14px}
+    @media (max-width:960px){ .board{grid-template-columns:1fr} }
+
+    .card{background:rgba(10,20,40,.75); border:1px solid #183154; border-radius:18px; padding:14px; box-shadow:0 20px 60px rgba(0,0,0,.35)}
+
+    /* Scoreboard HUD */
+    .hud{display:flex; flex-wrap:wrap; gap:10px}
+    .badge{background:#07142b; border:1px solid #1b335a; border-radius:12px; padding:8px 12px; font-weight:800; letter-spacing:.2px}
+    .led{font-feature-settings:'tnum' 1; font-variant-numeric:tabular-nums}
+    .outs{display:inline-flex; gap:6px; align-items:center}
+    .dot{width:10px; height:10px; border-radius:999px; background:#334155; display:inline-block}
+    .dot.on{background:#ef4444; box-shadow:0 0 8px #ef4444}
+
+    /* Question panel */
+    .equation{font-size:clamp(18px,2.3vw,26px); font-weight:900; color:#facc15; margin:6px 0}
+    .diagram{background:linear-gradient(180deg,#0d1a36,#0a1429); border:1px solid #1b2f51; border-radius:14px; height:300px; display:grid; place-items:center}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px}
+    input,button,select{background:#0c1b36; color:var(--ink); border:1px solid #223a66; border-radius:12px; padding:9px 12px; font-weight:700}
+    button{cursor:pointer}
+    button:hover{border-color:#2c4e86}
+    .feedback{min-height:20px; font-weight:800}
+    .steps{background:#0c1b36; border:1px dashed #27446f; border-radius:10px; padding:10px; margin-top:8px}
+
+    /* Field panel */
+    .field{position:relative; height:300px; border-radius:14px; background:conic-gradient(from 180deg at 50% 100%, #0b7426, #0c7f28 25%, #0a6c23 25%, #0a6c23 50%, #0b7426 50%, #0b7426 75%, #0a6c23 75%, #0a6c23 100%);
+      border:1px solid #174d2c; box-shadow:inset 0 0 0 2px rgba(255,255,255,.05)}
+    .diamond{position:absolute; inset:18px;}
+    canvas#atbat{position:absolute; inset:0; pointer-events:auto}
+    .toast{position:absolute; left:50%; bottom:12px; transform:translateX(-50%); background:#07142b; border:1px solid #1b335a; padding:8px 12px; border-radius:999px; font-weight:800}
+
+    .legend{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+    .chip{background:#0c1b36; border:1px solid #223a66; border-radius:999px; padding:4px 8px; font-size:12px}
+
+    .end{display:none; text-align:center}
+    .end.show{display:block}
   </style>
 </head>
 <body>
-  <!-- playful animated background -->
-  <div class="bg-layer">
-    <div class="orbs" id="orbs"></div>
-    <div class="stars" id="stars"></div>
+  <div class="stadium" aria-hidden="true">
+    <div class="lights"><div class="tower"></div><div class="tower"></div><div class="tower"></div></div>
+    <div class="bleachers"></div>
+    <div class="outfield"></div>
   </div>
 
-  <header>
-    <h1>🎉 Angle Arena — Solve for x!</h1>
-  </header>
-  <div class="game">
-    <div class="hud">
-      <div class="badge">⏱️ Time: <span id="time">—</span></div>
-      <div class="badge">🏆 Score: <span id="score">0</span></div>
-      <div class="badge">🔥 Streak: <span id="streak">0</span></div>
-    </div>
-    <div id="prompt">Press Start to Begin</div>
-    <div class="diagram">
-      <svg id="svg" viewBox="0 0 520 320" aria-label="Angle diagram with labeled points"></svg>
-    </div>
-    <div class="row">
-      <label>Answer for <b>x</b>:</label>
-      <input id="answer" type="text" inputmode="decimal" placeholder="e.g. 12 or 25/2"/>
-      <button id="checkBtn" disabled>Check</button>
-      <button id="nextBtn" class="hidden">Next ▶</button>
-    </div>
-    <div id="feedback" class="feedback"></div>
-    <div id="steps" class="steps" hidden></div>
-    <div class="row" style="margin-top:10px">
-      <button id="startBtn">Start</button>
-      <span id="errBadge" class="error-badge">Script error — open console</span>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Angle Ball ⚾</h1>
+        <div class="sub">Answer geometry questions to earn your at‑bat. Hits score points. 3 outs or 5:00 ends the game.</div>
+      </div>
+      <div class="hud">
+        <div class="badge">⏱ Time: <span id="time" class="led">5:00</span></div>
+        <div class="badge">🏆 Points: <span id="points" class="led">0</span></div>
+        <div class="badge">🏁 Runs: <span id="runs" class="led">0</span></div>
+        <div class="badge">⚾ Hits: <span id="hits" class="led">0</span></div>
+        <div class="badge outs">🧢 Outs: <span class="dot" id="o1"></span><span class="dot" id="o2"></span><span class="dot" id="o3"></span></div>
+        <button id="start">Start Game</button>
+      </div>
+    </header>
+
+    <div class="board">
+      <!-- Question side -->
+      <section class="card">
+        <div id="prompt" class="equation">Press <span style="color:var(--accent)">Start Game</span> to get your first pitch (question).</div>
+        <div class="diagram">
+          <svg id="svg" viewBox="0 0 520 300" width="100%" height="100%" aria-label="Angle diagram with labeled points"></svg>
+        </div>
+        <div class="row">
+          <label for="answer">Answer for <b>x</b>:</label>
+          <input id="answer" type="text" inputmode="decimal" placeholder="e.g., 12 or 25/2" />
+          <button id="check" disabled>Check</button>
+          <button id="skip">Skip (Out)</button>
+        </div>
+        <div id="feedback" class="feedback"></div>
+        <div id="steps" class="steps" hidden></div>
+        <div class="legend">
+          <div class="chip">Labeled points A, B, C (and D) shown on the diagram</div>
+          <div class="chip">Relationships include: right, complementary, supplementary, bisector, perpendicular</div>
+        </div>
+      </section>
+
+      <!-- Field side -->
+      <aside class="card">
+        <div class="field" id="field">
+          <!-- Diamond (SVG) -->
+          <svg class="diamond" id="diamond" viewBox="0 0 520 300">
+            <!-- base paths (chalk) -->
+            <path d="M260 220 L320 160 L260 100 L200 160 Z" fill="none" stroke="var(--chalk)" stroke-width="3" />
+            <!-- bases -->
+            <rect id="base1" x="312" y="152" width="16" height="16" fill="#fff" transform="rotate(45 320 160)"/>
+            <rect id="base2" x="252" y="92" width="16" height="16" fill="#fff" transform="rotate(45 260 100)"/>
+            <rect id="base3" x="192" y="152" width="16" height="16" fill="#fff" transform="rotate(45 200 160)"/>
+            <rect id="home"  x="252" y="212" width="16" height="16" fill="#fff" transform="rotate(45 260 220)"/>
+            <!-- runner dots -->
+            <circle id="r1" cx="320" cy="160" r="6" fill="#e11d48" opacity="0" />
+            <circle id="r2" cx="260" cy="100" r="6" fill="#e11d48" opacity="0" />
+            <circle id="r3" cx="200" cy="160" r="6" fill="#e11d48" opacity="0" />
+          </svg>
+          <canvas id="atbat" width="520" height="300" aria-label="At-bat mini-game canvas"></canvas>
+          <div class="toast" id="toast" aria-live="polite"></div>
+        </div>
+        <div class="legend" style="margin-top:8px">
+          <div class="chip">Correct answer → at-bat mini game</div>
+          <div class="chip">Whiff or wrong answer → out</div>
+          <div class="chip">Single/Double/Triple/HR advance runners</div>
+        </div>
+        <div class="end" id="end">
+          <h3>Game Over!</h3>
+          <p>Runs: <b id="endRuns">0</b> · Hits: <b id="endHits">0</b> · Points: <b id="endPoints">0</b></p>
+          <button id="restart">Play Again</button>
+        </div>
+      </aside>
     </div>
   </div>
 
   <script>
-    // Show errors on page if any script fails
-    window.addEventListener('error', ()=>{ document.getElementById('errBadge').style.display='inline-block'; });
+    // =============== Utilities & Elements ===============
+    const $ = s => document.querySelector(s);
+    const ui = {
+      start: $('#start'), restart: $('#restart'),
+      time: $('#time'), points: $('#points'), runs: $('#runs'), hits: $('#hits'),
+      o1: $('#o1'), o2: $('#o2'), o3: $('#o3'),
+      prompt: $('#prompt'), ans: $('#answer'), check: $('#check'), skip: $('#skip'),
+      feedback: $('#feedback'), steps: $('#steps'),
+      svg: $('#svg'), diamond: $('#diamond'), toast: $('#toast'),
+      r1: $('#r1'), r2: $('#r2'), r3: $('#r3'),
+      end: $('#end'), endRuns: $('#endRuns'), endHits: $('#endHits'), endPoints: $('#endPoints'),
+      atbat: $('#atbat')
+    };
 
-    // Elements
-    const svg = document.getElementById('svg');
-    const promptEl = document.getElementById('prompt'); // avoid clashing with window.prompt
-    const feedback = document.getElementById('feedback');
-    const stepsBox = document.getElementById('steps');
-    const ansInput = document.getElementById('answer');
-    const checkBtn = document.getElementById('checkBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const startBtn = document.getElementById('startBtn');
-    const scoreEl = document.getElementById('score');
-    const streakEl = document.getElementById('streak');
-    const timeEl = document.getElementById('time');
+    // Timer / game state
+    let running=false, timer=null, timeLeft=300; // 5 minutes
+    let outs=0, points=0, runs=0, hits=0;
+    let bases = { first:false, second:false, third:false };
 
-    let current=null, score=0, streak=0, timer=null, time=0, running=false, seq=0;
+    // At-bat state
+    let batting=false, swing=false, ballX=40, ballY=220, ballV=4.2, plateX=260; // canvas coords
 
-    // SVG helpers
+    function fmtTime(s){ const m=Math.floor(s/60), r=s%60; return `${m}:${String(r).padStart(2,'0')}` }
+    function setOuts(n){ outs=n; [ui.o1,ui.o2,ui.o3].forEach((d,i)=> d.classList.toggle('on', i < outs)); }
+    function showToast(t){ ui.toast.textContent=t; ui.toast.style.opacity='1'; setTimeout(()=> ui.toast.style.opacity='0', 1100); }
+
+    // =============== Math Questions ===============
+    const BX=260, BY=200; // vertex B in diagram
     function NS(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
-    function rect(x,y,w,h,fill){ const el=NS('rect'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('width',w); el.setAttribute('height',h); el.setAttribute('fill',fill); return el; }
-    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#f8fafc'); el.setAttribute('stroke-width',3); return el; }
-    function circle(x,y,r,fill='#38bdf8'){ const el=NS('circle'); el.setAttribute('cx',x); el.setAttribute('cy',y); el.setAttribute('r',r); el.setAttribute('fill',fill); return el; }
-    function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-size','16'); el.setAttribute('font-weight','700'); el.textContent=t; return el; }
-    function polar(cx,cy,r,a){ const rad=a*Math.PI/180; return {x: cx + r*Math.cos(rad), y: cy - r*Math.sin(rad)}; }
+    function drawBase(){ ui.svg.innerHTML=''; const bg=NS('rect'); bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',520); bg.setAttribute('height',300); bg.setAttribute('fill','#0b142a'); ui.svg.appendChild(bg); }
+    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#e5e7eb'); el.setAttribute('stroke-width','3'); return el; }
+    function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-weight','800'); el.textContent=t; return el; }
     function arc(cx,cy,r,a1,a2,color='#38bdf8',w=3){
-      const p=NS('path'); const P1=polar(cx,cy,r,a1), P2=polar(cx,cy,r,a2); const laf=(a2-a1)<=180?0:1;
-      const d=`M ${P1.x} ${P1.y} A ${r} ${r} 0 ${laf} 1 ${P2.x} ${P2.y}`;
-      p.setAttribute('d',d); p.setAttribute('stroke',color); p.setAttribute('fill','none'); p.setAttribute('stroke-width',w); return p;
+      const el=NS('path'); const P1=polar(cx,cy,r,a1), P2=polar(cx,cy,r,a2); const laf=(a2-a1)<=180?0:1;
+      el.setAttribute('d',`M ${P1.x} ${P1.y} A ${r} ${r} 0 ${laf} 1 ${P2.x} ${P2.y}`); el.setAttribute('fill','none'); el.setAttribute('stroke',color); el.setAttribute('stroke-width',w); return el;
     }
-    function drawBase(){ svg.innerHTML=''; svg.appendChild(rect(0,0,520,320,'#0a1226')); }
+    function polar(cx,cy,r,a){ const R=a*Math.PI/180; return {x: cx + r*Math.cos(R), y: cy - r*Math.sin(R)} }
 
-    // Conventions
-    const BX=260, BY=220; // vertex B
+    function parseNum(s){ if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s); const m=s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/); if(m){ const n=Number(m[1]), d=Number(m[2]); if(d!==0) return n/d; } return null; }
 
-    // Problems (start with rock-solid Right Angle only)
-    function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+    let current=null; // {prompt, steps, x, draw}
 
-    function genRightAngle(){
-      const a=randInt(1,4), b=randInt(-10,20); const x=(90-b)/a; const id=++seq;
-      const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. Solve for x if ∠ABC is a right angle.`;
-      const steps=`Right angle = 90° → ${a}x ${b>=0?'+':''}${b} = 90 → x = ${x}`;
-      function diagram(){ drawBase();
-        const A=polar(BX,BY,150,0), C=polar(BX,BY,150,90);
-        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y));
-        svg.appendChild(arc(BX,BY,40,0,90));
-        // right-angle marker square
-        const p1=polar(BX,BY,22,0), p2=polar(BX,BY,22,90);
-        const q=NS('path'); q.setAttribute('d',`M ${BX} ${BY} L ${p1.x} ${p1.y} L ${p1.x+p2.x-BX} ${p1.y+p2.y-BY} L ${p2.x} ${p2.y} Z`);
-        q.setAttribute('fill','#22d3ee'); q.setAttribute('opacity','0.35'); q.setAttribute('stroke','#38bdf8'); q.setAttribute('stroke-width','2'); svg.appendChild(q);
-        svg.appendChild(circle(BX,BY,4));
-        svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe'));
-        svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe'));
-        svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe'));
-        svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
+    // Generator helpers that guarantee clean integers
+    function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+    function genRight(){
+      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
+      const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. ∠ABC is right. Solve for x.`;
+      const steps=`Right angle = 90° ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90); ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(arc(BX,BY,40,0,90));
+        const t=NS('path'); const p1=polar(BX,BY,20,0), p2=polar(BX,BY,20,90); t.setAttribute('d',`M ${BX} ${BY} L ${p1.x} ${p1.y} L ${p1.x+p2.x-BX} ${p1.y+p2.y-BY} L ${p2.x} ${p2.y} Z`); t.setAttribute('fill','#22d3ee'); t.setAttribute('opacity','0.35'); t.setAttribute('stroke','#38bdf8'); t.setAttribute('stroke-width','2'); ui.svg.appendChild(t);
+        labelABC(A,C); ui.svg.appendChild(textEl(BX+44,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); }
+      return {prompt, steps, x, draw};
+    }
+
+    function genSupp(){ // (a+c)x + (b+d) = 180
+      const a=ri(1,3), c=ri(1,3), x=ri(5,60); const b=ri(-10,40), d=180-(a+c)*x - b; // solve for d to keep x integer
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are supplementary (sum 180°). Solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,180), D=polar(BX,BY,140,120);
+        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,0,120)); ui.svg.appendChild(arc(BX,BY,42,120,180)); labelABCD(A,C,D);
+        ui.svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX-132,BY-6,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
+      return {prompt, steps, x, draw};
+    }
+
+    function genComp(){ // (a+c)x + (b+d) = 90
+      const a=ri(1,3), c=ri(1,3), x=ri(5,60); const b=ri(-10,30), d=90-(a+c)*x - b;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are complementary (sum 90°). Solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90), D=polar(BX,BY,140,50);
+        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,0,50)); ui.svg.appendChild(arc(BX,BY,42,50,90)); labelABCD(A,C,D);
+        ui.svg.appendChild(textEl(BX+44,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX+8,BY-48,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
+      return {prompt, steps, x, draw};
+    }
+
+    function genBis(){ // a x + b = c x + d, choose x then set d
+      const total=[80,100,120,140][ri(0,3)], half=total/2; const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x; // ensures equality at x
+      const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
+      const steps=`Bisector ⇒ equal parts ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
+        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,20,20+half)); ui.svg.appendChild(arc(BX,BY,42,20+half,20+total));
+        // equal ticks
+        ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'#a7f3d0',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'#a7f3d0',2)); labelABCD(A,C,D);
+        ui.svg.appendChild(textEl(BX+42,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX+6,BY-46,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
+      return {prompt, steps, x, draw};
+    }
+
+    function genPerp(){ // perpendicular ⇒ 90
+      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
+      const prompt=`BA ⟂ BC at B. If m∠ABC = ${a}x ${b>=0?'+':''}${b}°, solve for x.`;
+      const steps=`Perpendicular ⇒ 90°: ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90); ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(arc(BX,BY,40,0,90)); labelABC(A,C); ui.svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); }
+      return {prompt, steps, x, draw};
+    }
+
+    function labelABC(A,C){ ui.svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe')); ui.svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe')); ui.svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe')); }
+    function labelABCD(A,C,D){ labelABC(A,C); ui.svg.appendChild(textEl(D.x-10,D.y-8,'D','#c7d2fe')); }
+
+    const GENS=[genRight, genSupp, genComp, genBis, genPerp];
+
+    function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
+
+    // =============== At-bat mini-game ===============
+    const ctx = ui.atbat.getContext('2d');
+
+    function drawAtBatBG(){ ctx.clearRect(0,0,520,300); /* plate */ ctx.fillStyle='#e2e8f0'; ctx.save(); ctx.translate(plateX, 240); ctx.rotate(Math.PI/4); ctx.fillRect(-10,-10,20,20); ctx.restore(); /* plate line */ ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(plateX, 240); ctx.lineTo(plateX, 280); ctx.stroke(); }
+
+    function startAtBat(){ batting=true; swing=false; ballX=40; ballY=220; ballV=4.2; drawAtBatBG(); requestAnimationFrame(stepAtBat); showToast('At-bat! Swing with SPACE or click'); }
+
+    function stepAtBat(){ if(!batting) return; drawAtBatBG(); // ball
+      ctx.beginPath(); ctx.fillStyle='#f59e0b'; ctx.arc(ballX, ballY, 7, 0, Math.PI*2); ctx.fill(); // bat swing indicator
+      if(swing){ ctx.strokeStyle='#22d3ee'; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(plateX, 220, 22, -Math.PI/3, Math.PI/3); ctx.stroke(); }
+      ballX += ballV;
+      if(ballX > plateX+40){ // ball passed plate → whiff
+        resolveSwing('out');
+      } else if (batting) { requestAnimationFrame(stepAtBat); }
+    }
+
+    function onSwing(){ if(!batting) return; swing=true; const dist=Math.abs(ballX - plateX); let outcome='out';
+      if(dist <= 12) outcome='homer';
+      else if(dist <= 22) outcome='triple';
+      else if(dist <= 34) outcome='double';
+      else if(dist <= 48) outcome='single';
+      resolveSwing(outcome);
+    }
+
+    function resolveSwing(result){ batting=false; swing=false; ui.atbat.style.pointerEvents='none';
+      if(result==='out'){ setOuts(outs+1); showToast('Whiff — OUT'); checkEnd(); return; }
+      // Hit → points & bases
+      hits++; points += 100; ui.hits.textContent=hits; ui.points.textContent=points;
+      const { bases: nb, runs: r } = advanceRunners(bases, result);
+      bases = nb; runs += r; ui.runs.textContent=runs; drawRunners();
+      showToast(result.toUpperCase()+ (r?` (+${r} run${r>1?'s':''})`:'') );
+    }
+
+    // Runners & bases
+    function drawRunners(){ ui.r1.style.opacity = bases.first? 1:0; ui.r2.style.opacity = bases.second?1:0; ui.r3.style.opacity = bases.third? 1:0; }
+
+    function advanceRunners(bases, result){
+      let runs=0; const b={...bases}; const scoreIf=pos=>{ if(b[pos]){ runs++; b[pos]=false; } };
+      if(result==='single'){
+        scoreIf('third'); const third=b.second; const second=b.first; b.third=!!third; b.second=!!second; b.first=true;
+      } else if(result==='double'){
+        scoreIf('third'); scoreIf('second'); const third=b.first; b.third=!!third; b.second=true; b.first=false;
+      } else if(result==='triple'){
+        scoreIf('third'); scoreIf('second'); scoreIf('first'); b.third=true; b.second=false; b.first=false;
+      } else if(result==='homer'){
+        scoreIf('third'); scoreIf('second'); scoreIf('first'); runs++; b.first=b.second=b.third=false;
       }
-      return {id,prompt,steps,x,diagram};
+      return { bases:b, runs };
     }
 
-    // Parse number: accepts decimals or fractions like 25/2
-    function parseNum(s){
-      if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s);
-      const m = s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/);
-      if(m){ const n = Number(m[1]); const d = Number(m[2]); if(d!==0) return n/d; }
-      return null;
+    // =============== Game flow ===============
+    function startGame(){ running=true; timeLeft=300; outs=0; hits=0; points=0; runs=0; bases={first:false,second:false,third:false};
+      ui.points.textContent='0'; ui.hits.textContent='0'; ui.runs.textContent='0'; drawRunners(); setOuts(0); ui.end.classList.remove('show'); ui.check.disabled=false; ui.ans.disabled=false;
+      newProblem();
+      clearInterval(timer); ui.time.textContent = fmtTime(timeLeft);
+      timer=setInterval(()=>{ timeLeft--; ui.time.textContent = fmtTime(timeLeft); if(timeLeft<=0){ endGame(); } },1000);
     }
 
-    // Game flow
-    function startGame(){
-      score=0; streak=0; time=240; // 4 minutes
-      scoreEl.textContent=0; streakEl.textContent=0; timeEl.textContent=time; feedback.textContent='';
-      checkBtn.disabled=false; nextBtn.classList.add('hidden'); stepsBox.hidden=true; running=true;
-      nextProblem();
-      clearInterval(timer);
-      timer=setInterval(()=>{
-        time--; timeEl.textContent=time;
-        if(time<=0){ clearInterval(timer); running=false; promptEl.textContent='⏰ Time up!'; checkBtn.disabled=true; }
-      },1000);
+    function endGame(){ running=false; clearInterval(timer); ui.check.disabled=true; ui.ans.disabled=true; ui.steps.hidden=false; ui.steps.innerHTML='<b>Game Over.</b> Thanks for playing!'; ui.end.classList.add('show'); ui.endRuns.textContent=runs; ui.endHits.textContent=hits; ui.endPoints.textContent=points; }
+    function checkEnd(){ if(outs>=3){ endGame(); } }
+
+    // Answer handling
+    function submitAnswer(){ if(!running||batting) return; const v=parseNum(ui.ans.value.trim()); if(v===null){ ui.feedback.textContent='Enter a valid number (e.g., 12 or 25/2)'; return; }
+      if(Math.abs(v - current.x) < 1e-9){ ui.feedback.textContent='✅ Correct! Take your at-bat…'; ui.steps.hidden=false; ui.steps.innerHTML=current.steps; // start at bat
+        setTimeout(()=>{ ui.steps.hidden=true; ui.feedback.textContent=''; ui.atbat.style.pointerEvents='auto'; startAtBat(); }, 500);
+      } else { ui.feedback.textContent='❌ Strike — that\'s an out.'; setOuts(outs+1); checkEnd(); newProblem(); }
     }
 
-    function nextProblem(){
-      if(!running) return;
-      const p = genRightAngle();
-      current = p;
-      promptEl.innerHTML = p.prompt;
-      p.diagram();
-      ansInput.value='';
-      stepsBox.hidden=true; feedback.textContent=''; nextBtn.classList.add('hidden');
-    }
+    // Controls
+    ui.check.addEventListener('click', submitAnswer);
+    ui.skip.addEventListener('click', ()=>{ setOuts(outs+1); showToast('Skip = Out'); checkEnd(); if(running) newProblem(); });
+    ui.start.addEventListener('click', startGame);
+    ui.restart?.addEventListener('click', startGame);
+    ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
+    window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); onSwing(); } });
+    ui.atbat.addEventListener('click', onSwing);
 
-    function checkAnswer(){
-      if(!running||!current) return;
-      const v = parseNum(ansInput.value.trim());
-      if(v===null){ feedback.textContent='Enter a valid number (e.g., 12 or 25/2).'; return; }
-      const ok = Math.abs(v - current.x) < 1e-9;
-      if(ok){
-        score += 100; streak++;
-        scoreEl.textContent = score; streakEl.textContent = streak;
-        feedback.textContent = '✅ Correct!';
-        stepsBox.hidden = false; stepsBox.innerHTML = current.steps;
-        nextBtn.classList.remove('hidden');
-      } else {
-        streak = 0; streakEl.textContent = streak; feedback.textContent = '❌ Try again.';
-      }
-    }
-
-    // Events
-    checkBtn.addEventListener('click', checkAnswer);
-    nextBtn.addEventListener('click', nextProblem);
-    ansInput.addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
-    startBtn.addEventListener('click', startGame);
-
-    // Background particles (after DOM is ready)
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const stars=document.getElementById('stars');
-      for(let i=0;i<100;i++){
-        const s=document.createElement('div');
-        s.className='star';
-        s.style.left=Math.random()*100+'%';
-        s.style.top=Math.random()*100+'%';
-        s.style.animationDuration=(2+Math.random()*3)+'s';
-        stars.appendChild(s);
-      }
-      const orbs=document.getElementById('orbs');
-      const make=(cls,l,t)=>{ const d=document.createElement('div'); d.className='orb '+cls; d.style.left=l; d.style.top=t; d.style.animationDelay=(-Math.random()*6)+'s'; orbs.appendChild(d); };
-      make('blue','5%','70%'); make('purple','80%','60%'); make('green','60%','5%');
-    });
+    // Initial draw
+    drawBase(); drawRunners();
   </script>
 </body>
 </html>
