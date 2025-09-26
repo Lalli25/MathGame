@@ -245,16 +245,19 @@
         ui.svg.appendChild(labelNear(BX,BY,62,(angD+90)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
       return {prompt, steps, x, draw}; }
 
-    function genBis(){ // bisector; choose params to avoid identity and keep integer x via equality
-      const total=[80,100,120,140][ri(0,3)], half=total/2;
-      const a=ri(1,4); let c=ri(1,4); while(c===a) c=ri(1,4); // avoid a==c (identity)
-      const x=ri(5,70); const b=ri(-10,25); const d=a*x + b - c*x; // ensures equality at chosen integer x
+    function genBis(){
+      // Bisected angle: parts are equal AND each equals half of the given total.
+      const totals=[80,100,120,140];
+      const total=totals[ri(0,totals.length-1)], half=total/2;
+      const a=ri(1,4), c=ri(1,4);
+      let x=ri(4,60); // guarantee integer x
+      const b = half - a*x; // ensures a*x+b = half
+      const d = half - c*x; // ensures c*x+d = half
       const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
-      const steps=`Bisector ⇒ the two angles are congruent. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      const steps=`Bisector ⇒ m∠ABD = m∠DBC = ${half}°. So ${a}x ${b>=0?'+':''}${b} = ${half} and ${c}x ${d>=0?'+':''}${d} = ${half} ⇒ x = ${x}.`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
-        // equal ticks
         ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'var(--tick)',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
         ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
         ui.svg.appendChild(labelNear(BX,BY,64,20+(half/2),`${a}x ${b>=0?'+':''}${b}°`));
@@ -270,24 +273,40 @@
         ui.svg.appendChild(dot(BX,BY)); labelABC(A,C); ui.svg.appendChild(labelNear(BX,BY,64,45,`${a}x ${b>=0?'+':''}${b}°`)); }
       return {prompt, steps, x, draw}; }
 
-    function genVertical(){ // vertical angles ⇒ equal
-      const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x; // equality ensures integer x
-      const prompt=`Two lines intersect at B. ∠ABD and ∠CBE are vertical angles. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠CBE = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
-      const steps=`Vertical angles are congruent ⇒ ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+    function genVertical(){
+      // Two intersecting lines: choose angles so vertical pair is (ABE) and (CBD)
+      // Pick two line directions separated by a nontrivial angle
+      const base=ri(10,40); const sep=ri(40,80); // avoid degenerate skinny/straight cases
+      const t1=base;           // line 1 direction (A)
+      const t1opp=(t1+180)%360; // D
+      const t2=(base+sep)%360;  // line 2 direction (C)
+      const t2opp=(t2+180)%360; // E
+      const A=polar(BX,BY,140,t1), D=polar(BX,BY,140,t1opp), C=polar(BX,BY,140,t2), E=polar(BX,BY,140,t2opp);
+
+      // Helper to return shortest-arc endpoints
+      const norm=a=>{ a%=360; return a<0?a+360:a; };
+      const shortArc=(a1,a2)=>{ a1=norm(a1); a2=norm(a2); let diff=((a2-a1+540)%360)-180; return [a1, a1+diff]; };
+
+      // Algebra: ensure equal expressions with integer x and not identical coefficients
+      let a=ri(1,4), c=ri(1,4); while(a===c) c=ri(1,4);
+      const x=ri(5,70); const b=ri(-10,25); const d=a*x + b - c*x; // equality at chosen integer x
+
+      const prompt=`Two lines intersect at B. ∠ABE and ∠CBD are vertical angles. m∠ABE = ${a}x ${b>=0?'+':''}${b}°, m∠CBD = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
+      const steps=`Vertical angles are congruent ⇒ ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}.`;
+
       function draw(){ drawBase();
-        // create an X: line through A–B–D and line through C–B–E
-        const A=polar(BX,BY,140,20), D=polar(BX,BY,140,200);
-        const C=polar(BX,BY,140,110), E=polar(BX,BY,140,290);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,D); drawRayTo(BX,BY,C); drawRayTo(BX,BY,E);
-        // highlight vertical pair ABD & CBE with arcs near their mid angles
-        ui.svg.appendChild(arc(BX,BY,44,20,110,'#38bdf8',3)); // ABD arc (20→110)
-        ui.svg.appendChild(arc(BX,BY,44,200,290,'#38bdf8',3)); // CBE arc (200→290)
+        // arcs for the vertical pair: ABE (t1 to t2opp) and CBD (t2 to t1opp)
+        const [s1,e1]=shortArc(t1, t2opp); ui.svg.appendChild(arc(BX,BY,44,s1,e1,'#38bdf8',3));
+        const [s2,e2]=shortArc(t2, t1opp); ui.svg.appendChild(arc(BX,BY,44,s2,e2,'#38bdf8',3));
         ui.svg.appendChild(dot(BX,BY)); labelABCDE(A,C,D,E);
-        ui.svg.appendChild(labelNear(BX,BY,64,(20+110)/2,`${a}x ${b>=0?'+':''}${b}°`));
-        ui.svg.appendChild(labelNear(BX,BY,64,(200+290)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
+        const mid1=(s1+e1)/2, mid2=(s2+e2)/2;
+        ui.svg.appendChild(labelNear(BX,BY,64,mid1,`${a}x ${b>=0?'+':''}${b}°`));
+        ui.svg.appendChild(labelNear(BX,BY,64,mid2,`${c}x ${d>=0?'+':''}${d}°`));
+      }
       return {prompt, steps, x, draw}; }
 
-    const GENS=[genRight, genSupp, genComp, genBis, genPerp, genVertical, genVertical];
+    const GENS=[genRight, genSupp, genComp, genBis, genPerp, genVertical, genVertical, genVertical];
 
     function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
 
@@ -392,12 +411,6 @@
     ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
     window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); onSwing(); } });
     ui.atbat.addEventListener('click', onSwing);
-
-    // Initial draw
-    drawBase(); drawRunners();
-  </script>
-</body>
-</html>
 
     // Initial draw
     drawBase(); drawRunners();
