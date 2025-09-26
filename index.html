@@ -89,7 +89,7 @@
     <header>
       <div>
         <h1>Angle Ball ⚾</h1>
-        <div class="sub">Answer geometry questions to earn your at-bat. Hits score points. 3 outs or 5:00 ends the game.</div>
+        <div class="sub">Answer geometry questions to earn your at‑bat. Hits score points. 3 outs or 5:00 ends the game.</div>
       </div>
       <div class="hud">
         <div class="badge">⏱ Time: <span id="time" class="led">5:00</span></div>
@@ -117,8 +117,8 @@
         <div id="feedback" class="feedback"></div>
         <div id="steps" class="steps" hidden></div>
         <div class="legend">
-          <div class="chip">Labeled points A, B, C (and D) shown on the diagram</div>
-          <div class="chip">Relationships: right, complementary, supplementary, bisector, perpendicular</div>
+          <div class="chip">Labeled points A, B, C (and D/E) shown on the diagram</div>
+          <div class="chip">Relationships: right, complementary, supplementary, bisector, perpendicular, vertical</div>
         </div>
       </section>
 
@@ -177,7 +177,7 @@
     let bases = { first:false, second:false, third:false };
 
     // At-bat state
-    let batting=false, swing=false, ballX=40, ballY=220, ballV=4.2, plateX=260; // canvas coords
+    let batting=false, swing=false, ballX=40, ballY=220, ballV=5.6, plateX=260; // faster ball
     let countdownTimer=null, countingDown=false;
 
     function fmtTime(s){ const m=Math.floor(s/60), r=s%60; return `${m}:${String(r).padStart(2,'0')}` }
@@ -201,15 +201,17 @@
 
     function labelABC(A,C){ ui.svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe')); ui.svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe')); ui.svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe')); }
     function labelABCD(A,C,D){ labelABC(A,C); ui.svg.appendChild(textEl(D.x-10,D.y-8,'D','#c7d2fe')); }
+    function labelABCDE(A,C,D,E){ labelABCD(A,C,D); ui.svg.appendChild(textEl(E.x-10,E.y-8,'E','#c7d2fe')); }
+
     function drawRayTo(cx,cy,pt){ ui.svg.appendChild(line(cx,cy,pt.x,pt.y)); }
 
-    // =============== Problem Generators (integer x only) ===============
+    // =============== Problem Generators (integer x only; prompts hide totals) ===============
     function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
     function genRight(){ // rays at 0° and 90°
       const a=ri(1,4), x=ri(5,85), b=90 - a*x;
       const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. ∠ABC is a right angle. Solve for x.`;
-      const steps=`Right angle = 90° ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      const steps=`Right angle is 90° ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); ui.svg.appendChild(arc(BX,BY,44,0,90)); ui.svg.appendChild(rightMarker(BX,BY,20));
         ui.svg.appendChild(dot(BX,BY)); labelABC(A,C); ui.svg.appendChild(labelNear(BX,BY,64,45,`${a}x ${b>=0?'+':''}${b}°`)); }
@@ -217,8 +219,8 @@
 
     function genSupp(){ // 0° to 180°, D between (40–140)
       const a=ri(1,3), c=ri(1,3), x=ri(4,50); const b=ri(-10,40), d=180-(a+c)*x - b;
-      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are supplementary (sum 180°). Solve for x.`;
-      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are supplementary. Solve for x.`;
+      const steps=`Supplementary angles form a straight line ⇒ sum 180°. (${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,180), D=polar(BX,BY,140,ri(40,140));
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         const angD = (()=>{ const deg = Math.atan2(BY-D.y, D.x-BX)*180/Math.PI; return deg<0?deg+360:deg; })();
@@ -231,8 +233,8 @@
 
     function genComp(){ // 0° to 90°, D between (25–65)
       const a=ri(1,3), c=ri(1,3), x=ri(4,50); const b=ri(-10,30), d=90-(a+c)*x - b;
-      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are complementary (sum 90°). Solve for x.`;
-      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 ⇒ x = ${x}`;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are complementary. Solve for x.`;
+      const steps=`Complementary angles add to 90°. (${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90), D=polar(BX,BY,140,ri(25,65));
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         const angD = (()=>{ const deg = Math.atan2(BY-D.y, D.x-BX)*180/Math.PI; return deg<0?deg+360:deg; })();
@@ -246,7 +248,7 @@
     function genBis(){ // total angle fixed; D at midpoint
       const total=[80,100,120,140][ri(0,3)], half=total/2; const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x;
       const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
-      const steps=`Bisector ⇒ equal parts ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      const steps=`Bisector makes two equal angles of ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
@@ -256,23 +258,40 @@
         ui.svg.appendChild(labelNear(BX,BY,64,20+half+(half/2),`${c}x ${d>=0?'+':''}${d}°`)); }
       return {prompt, steps, x, draw}; }
 
-    function genPerp(){ // 0° and 90° with right marker
+    function genPerp(){ // perpendicular lines ⇒ 90
       const a=ri(1,4), x=ri(5,85), b=90 - a*x;
       const prompt=`BA ⟂ BC at B. If m∠ABC = ${a}x ${b>=0?'+':''}${b}°, solve for x.`;
-      const steps=`Perpendicular ⇒ 90°: ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      const steps=`Perpendicular lines form a right angle ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); ui.svg.appendChild(arc(BX,BY,44,0,90)); ui.svg.appendChild(rightMarker(BX,BY,20));
         ui.svg.appendChild(dot(BX,BY)); labelABC(A,C); ui.svg.appendChild(labelNear(BX,BY,64,45,`${a}x ${b>=0?'+':''}${b}°`)); }
       return {prompt, steps, x, draw}; }
 
-    const GENS=[genRight, genSupp, genComp, genBis, genPerp];
+    function genVertical(){ // vertical angles ⇒ equal
+      const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x; // equality ensures integer x
+      const prompt=`Two lines intersect at B. ∠ABD and ∠CBE are vertical angles. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠CBE = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
+      const steps=`Vertical angles are congruent ⇒ ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      function draw(){ drawBase();
+        // create an X: line through A–B–D and line through C–B–E
+        const A=polar(BX,BY,140,20), D=polar(BX,BY,140,200);
+        const C=polar(BX,BY,140,110), E=polar(BX,BY,140,290);
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,D); drawRayTo(BX,BY,C); drawRayTo(BX,BY,E);
+        // highlight vertical pair ABD & CBE with arcs near their mid angles
+        ui.svg.appendChild(arc(BX,BY,44,20,110,'#38bdf8',3)); // ABD arc (20→110)
+        ui.svg.appendChild(arc(BX,BY,44,200,290,'#38bdf8',3)); // CBE arc (200→290)
+        ui.svg.appendChild(dot(BX,BY)); labelABCDE(A,C,D,E);
+        ui.svg.appendChild(labelNear(BX,BY,64,(20+110)/2,`${a}x ${b>=0?'+':''}${b}°`));
+        ui.svg.appendChild(labelNear(BX,BY,64,(200+290)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
+      return {prompt, steps, x, draw}; }
+
+    const GENS=[genRight, genSupp, genComp, genBis, genPerp, genVertical];
 
     function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
 
     // Integer-only input
     function parseIntOnly(s){ if(/^[-+]?\d+$/.test(s)) return Number(s); return null; }
 
-    // =============== At-bat mini-game ===============
+    // =============== At-bat mini-game (faster ball + harder HR) ===============
     const ctx = ui.atbat.getContext('2d');
 
     function drawAtBatBG(){
@@ -284,47 +303,38 @@
     }
 
     function prepAtBatCountdown(){
-      if(countingDown) return;
-      countingDown = true;
-      let c = 3;
-      ui.toast.style.opacity = '1';
-      ui.toast.textContent = `Pitch in ${c}…`;
-      ui.check.disabled = true;
-      ui.ans.disabled = true;
-      countdownTimer = setInterval(()=>{
-        c--;
-        if(c>0){ ui.toast.textContent = `Pitch in ${c}…`; }
-        else{
-          clearInterval(countdownTimer); countingDown=false;
-          ui.toast.textContent = 'Swing!';
-          ui.steps.hidden=true; ui.feedback.textContent='';
-          ui.atbat.style.pointerEvents='auto';
-          startAtBat();
+      if(countingDown) return; countingDown=true;
+      let c=3; ui.toast.style.opacity='1'; ui.toast.textContent = `Pitch in ${c}…`;
+      ui.check.disabled=true; ui.ans.disabled=true; // pause inputs during countdown
+      countdownTimer=setInterval(()=>{
+        c--; if(c>0){ ui.toast.textContent = `Pitch in ${c}…`; }
+        else { clearInterval(countdownTimer); countingDown=false; ui.toast.textContent='Swing!';
+          ui.steps.hidden=true; ui.feedback.textContent=''; ui.atbat.style.pointerEvents='auto'; startAtBat();
         }
       },1000);
     }
 
-    function startAtBat(){ batting=true; swing=false; ballX=40; ballY=220; ballV=4.2; drawAtBatBG(); requestAnimationFrame(stepAtBat); }
+    function startAtBat(){ batting=true; swing=false; ballX=40; ballY=220; drawAtBatBG(); requestAnimationFrame(stepAtBat); }
 
-    function stepAtBat(){ if(!batting) return; drawAtBatBG();
-      // ball
-      ctx.beginPath(); ctx.fillStyle='#f59e0b'; ctx.arc(ballX, ballY, 7, 0, Math.PI*2); ctx.fill();
-      // bat swing indicator
+    function stepAtBat(){ if(!batting) return; drawAtBatBG(); // ball
+      ctx.beginPath(); ctx.fillStyle='#f59e0b'; ctx.arc(ballX, ballY, 7, 0, Math.PI*2); ctx.fill(); // bat swing indicator
       if(swing){ ctx.strokeStyle='#22d3ee'; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(plateX, 220, 22, -Math.PI/3, Math.PI/3); ctx.stroke(); }
-      ballX += ballV;
-      if(ballX > plateX+40){ resolveSwing('out'); } else { requestAnimationFrame(stepAtBat); }
+      ballX += ballV; // faster than before
+      if(ballX > plateX+40){ // ball passed plate → whiff
+        resolveSwing('out');
+      } else if (batting) { requestAnimationFrame(stepAtBat); }
     }
 
     function onSwing(){ if(!batting) return; swing=true; const dist=Math.abs(ballX - plateX); let outcome='out';
-      if(dist <= 12) outcome='homer';
-      else if(dist <= 22) outcome='triple';
-      else if(dist <= 34) outcome='double';
-      else if(dist <= 48) outcome='single';
+      // tighter windows make HR harder
+      if(dist <= 8) outcome='homer';
+      else if(dist <= 18) outcome='triple';
+      else if(dist <= 30) outcome='double';
+      else if(dist <= 44) outcome='single';
       resolveSwing(outcome);
     }
 
-    function resolveSwing(result){
-      batting=false; swing=false; ui.atbat.style.pointerEvents='none';
+    function resolveSwing(result){ batting=false; swing=false; ui.atbat.style.pointerEvents='none';
       ui.check.disabled=false; ui.ans.disabled=false;
       if(result==='out'){ setOuts(outs+1); showToast('Whiff — OUT'); checkEnd(); if(running) newProblem(); return; }
       // Hit → points & bases
@@ -363,19 +373,12 @@
     function endGame(){ running=false; clearInterval(timer); ui.check.disabled=true; ui.ans.disabled=true; ui.steps.hidden=false; ui.steps.innerHTML='<b>Game Over.</b> Thanks for playing!'; ui.end.classList.add('show'); ui.endRuns.textContent=runs; ui.endHits.textContent=hits; ui.endPoints.textContent=points; }
     function checkEnd(){ if(outs>=3){ endGame(); } }
 
-    // Answer handling (integer only)
-    function submitAnswer(){
-      if(!running||batting||countingDown) return;
-      const v=parseIntOnly(ui.ans.value.trim());
-      if(v===null){ ui.feedback.textContent='Enter a whole number (no decimals).'; return; }
-      if(Math.abs(v - current.x) < 1e-9){
-        ui.feedback.textContent='✅ Correct! Get ready to swing…';
-        ui.steps.hidden=false; ui.steps.innerHTML=current.steps;
-        prepAtBatCountdown();
-      } else {
-        ui.feedback.textContent='❌ Strike — that\'s an out.';
-        setOuts(outs+1); checkEnd(); if(running) newProblem();
-      }
+    // Answer handling (integer only + countdown)
+    function parseIntOnly(s){ if(/^[-+]?\d+$/.test(s)) return Number(s); return null; }
+
+    function submitAnswer(){ if(!running||batting||countingDown) return; const v=parseIntOnly(ui.ans.value.trim()); if(v===null){ ui.feedback.textContent='Enter a whole number (no decimals).'; return; }
+      if(Math.abs(v - current.x) < 1e-9){ ui.feedback.textContent='✅ Correct! Get ready to swing…'; ui.steps.hidden=false; ui.steps.innerHTML=current.steps; prepAtBatCountdown(); }
+      else { ui.feedback.textContent='❌ Strike — that\'s an out.'; setOuts(outs+1); checkEnd(); if(running) newProblem(); }
     }
 
     // Controls
