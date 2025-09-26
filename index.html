@@ -5,20 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Angle Arena — Fun Geometry Game</title>
   <style>
-    body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#1e293b,#0f172a);color:#f8fafc;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+    :root{--ink:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--panel:#0b1224}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#1e293b,#0f172a);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center}
     header{padding:20px;text-align:center}
-    h1{margin:0;font-size:28px;color:#38bdf8}
-    .game{background:rgba(255,255,255,0.05);border:2px solid #334155;border-radius:16px;padding:20px;max-width:800px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+    h1{margin:0;font-size:28px;color:var(--accent)}
+    .game{background:rgba(255,255,255,0.05);border:2px solid #334155;border-radius:16px;padding:20px;max-width:900px;width:92%;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
     .hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
     .badge{background:#0a1328;border:1px solid #1e293b;border-radius:999px;padding:6px 12px;font-weight:bold}
-    #prompt{font-size:20px;font-weight:bold;margin:10px 0;color:#facc15}
-    .diagram{background:#0a1226;border:1px solid #1e293b;border-radius:12px;height:300px;display:grid;place-items:center;margin:12px 0}
+    #prompt{font-size:20px;font-weight:800;margin:10px 0;color:#facc15}
+    .diagram{background:#0a1226;border:1px solid #1e293b;border-radius:12px;height:320px;display:grid;place-items:center;margin:12px 0}
     svg{width:100%;height:100%}
-    input,button{padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#f8fafc;font-size:15px}
+    input,button{padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:var(--ink);font-size:15px}
     button{cursor:pointer}
     button:hover{background:#334155}
-    .steps{background:#1e293b;border:1px dashed #475569;border-radius:8px;padding:8px;margin-top:10px}
+    .steps{background:#0b1224;border:1px dashed #475569;border-radius:8px;padding:10px;margin-top:10px}
     .feedback{margin-top:6px;font-weight:bold}
+    .hidden{display:none}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   </style>
 </head>
 <body>
@@ -33,84 +37,201 @@
     </div>
     <div id="prompt">Press Start to Begin</div>
     <div class="diagram">
-      <svg id="svg" viewBox="0 0 500 300" aria-label="Angle diagram with labeled points"></svg>
+      <svg id="svg" viewBox="0 0 520 320" aria-label="Angle diagram with labeled points"></svg>
     </div>
-    <div>
+    <div class="row">
       <label>Answer for <b>x</b>:</label>
       <input id="answer" type="text" inputmode="decimal" placeholder="e.g. 12 or 25/2"/>
-      <button id="checkBtn">Check</button>
+      <button id="checkBtn" disabled>Check</button>
+      <button id="nextBtn" class="hidden">Next ▶</button>
       <span id="feedback" class="feedback"></span>
     </div>
-    <button id="startBtn" style="margin-top:10px;">Start</button>
     <div id="steps" class="steps" hidden></div>
+    <div class="row" style="margin-top:10px;justify-content:space-between">
+      <button id="startBtn">Start</button>
+      <div class="badge" id="errBadge" style="display:none;color:#fecaca;background:#450a0a;border-color:#7f1d1d">Script error — open console</div>
+    </div>
   </div>
 
   <script>
+    // ===== Safety: surface any runtime error to the page =====
+    window.addEventListener('error', ()=>{ document.getElementById('errBadge').style.display='block'; });
+
+    // ===== Shorthands & elements =====
     const svg = document.getElementById('svg');
-    const prompt = document.getElementById('prompt');
+    const promptEl = document.getElementById('prompt');
     const feedback = document.getElementById('feedback');
     const stepsBox = document.getElementById('steps');
     const ansInput = document.getElementById('answer');
     const checkBtn = document.getElementById('checkBtn');
+    const nextBtn = document.getElementById('nextBtn');
     const startBtn = document.getElementById('startBtn');
     const scoreEl = document.getElementById('score');
     const streakEl = document.getElementById('streak');
     const timeEl = document.getElementById('time');
 
-    let current=null, score=0, streak=0, timer=null, time=0, running=false;
+    let current=null, score=0, streak=0, timer=null, time=0, running=false, seq=0;
 
-    function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-    function drawBase(){svg.innerHTML=''; svg.appendChild(rect(0,0,500,300,'#0a1226'))}
-    function rect(x,y,w,h,fill){const el=document.createElementNS('http://www.w3.org/2000/svg','rect'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('width',w); el.setAttribute('height',h); el.setAttribute('fill',fill); return el;}
-    function circle(x,y,r){const el=document.createElementNS('http://www.w3.org/2000/svg','circle'); el.setAttribute('cx',x); el.setAttribute('cy',y); el.setAttribute('r',r); el.setAttribute('fill','#38bdf8'); return el;}
-    function line(x1,y1,x2,y2){const el=document.createElementNS('http://www.w3.org/2000/svg','line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#f8fafc'); el.setAttribute('stroke-width',3); return el;}
-    function textEl(x,y,t){const el=document.createElementNS('http://www.w3.org/2000/svg','text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill','#facc15'); el.setAttribute('font-size','16'); el.setAttribute('font-weight','700'); el.textContent=t; return el;}
+    // ===== SVG helpers =====
+    function NS(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+    function rect(x,y,w,h,fill){ const el=NS('rect'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('width',w); el.setAttribute('height',h); el.setAttribute('fill',fill); return el; }
+    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#f8fafc'); el.setAttribute('stroke-width',3); return el; }
+    function circle(x,y,r,fill='#38bdf8'){ const el=NS('circle'); el.setAttribute('cx',x); el.setAttribute('cy',y); el.setAttribute('r',r); el.setAttribute('fill',fill); return el; }
+    function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-size','16'); el.setAttribute('font-weight','700'); el.textContent=t; return el; }
+    function polar(cx,cy,r,a){ const rad=a*Math.PI/180; return {x: cx + r*Math.cos(rad), y: cy - r*Math.sin(rad)}; }
+    function arc(cx,cy,r,a1,a2,color='#38bdf8',w=3){
+      const p=NS('path'); const P1=polar(cx,cy,r,a1), P2=polar(cx,cy,r,a2); const laf=(a2-a1)<=180?0:1;
+      const d=`M ${P1.x} ${P1.y} A ${r} ${r} 0 ${laf} 1 ${P2.x} ${P2.y}`;
+      p.setAttribute('d',d); p.setAttribute('stroke',color); p.setAttribute('fill','none'); p.setAttribute('stroke-width',w); return p;
+    }
+    function drawBase(){ svg.innerHTML=''; svg.appendChild(rect(0,0,520,320,'#0a1226')); }
+
+    // ===== Geometry conventions =====
+    const BX=260, BY=220; // vertex B position (consistent across diagrams)
+
+    // ===== Problem generators (all label points) =====
+    function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 
     function genRightAngle(){
-      const a=randInt(1,4), b=randInt(-10,20); const sol=(90-b)/a;
-      const promptText=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. Solve for x if ∠ABC is a right angle.`;
-      const steps=`Right angle = 90 → ${a}x ${b>=0?'+':''}${b} = 90 → x=${sol}`;
-      function diagram(){
-        drawBase();
-        const Bx=250,By=200; const Ax=400,Ay=200; const Cx=250,Cy=50;
-        svg.appendChild(line(Bx,By,Ax,Ay)); svg.appendChild(line(Bx,By,Cx,Cy));
-        svg.appendChild(circle(Bx,By,4));
-        svg.appendChild(textEl(Ax,Ay+20,'A'));
-        svg.appendChild(textEl(Bx-15,By+15,'B'));
-        svg.appendChild(textEl(Cx-15,Cy,'C'));
+      const a=randInt(1,4), b=randInt(-10,20); const x=(90-b)/a; const id=++seq;
+      const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. Solve for x if ∠ABC is a right angle.`;
+      const steps=`Right angle = 90° → ${a}x ${b>=0?'+':''}${b} = 90 → x = ${x}`;
+      function diagram(){ drawBase();
+        const A=polar(BX,BY,150,0), C=polar(BX,BY,150,90);
+        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y));
+        svg.appendChild(arc(BX,BY,40,0,90));
+        // right marker
+        const p1=polar(BX,BY,22,0), p2=polar(BX,BY,22,90);
+        const q=NS('path'); q.setAttribute('d',`M ${BX} ${BY} L ${p1.x} ${p1.y} L ${p1.x+p2.x-BX} ${p1.y+p2.y-BY} L ${p2.x} ${p2.y} Z`); q.setAttribute('fill','#22d3ee'); q.setAttribute('opacity','0.35'); q.setAttribute('stroke','#38bdf8'); q.setAttribute('stroke-width','2'); svg.appendChild(q);
+        svg.appendChild(circle(BX,BY,4));
+        svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe'));
+        svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe'));
+        svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe'));
+        svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
       }
-      return {prompt:promptText, steps, x:sol, diagram}
+      return {id,prompt,steps,x,diagram,tags:['right','perpendicular']};
     }
 
-    function nextProblem(){
-      current=genRightAngle();
-      prompt.innerHTML=current.prompt;
-      current.diagram();
-      stepsBox.hidden=true; feedback.textContent=''; ansInput.value='';
+    function genSupplementary(){
+      const a=randInt(1,3), c=randInt(1,3), b=randInt(-5,40), d=randInt(-5,40);
+      const x=(180-(b+d))/(a+c); const id=++seq;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. If they’re supplementary (sum 180°), solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 → ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 → x = ${x}`;
+      function diagram(){ drawBase();
+        const A=polar(BX,BY,150,0), C=polar(BX,BY,150,180), D=polar(BX,BY,150,120);
+        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y)); svg.appendChild(line(BX,BY,D.x,D.y));
+        svg.appendChild(arc(BX,BY,44,0,120)); svg.appendChild(arc(BX,BY,44,120,180));
+        svg.appendChild(circle(BX,BY,4));
+        svg.appendChild(textEl(A.x+6,A.y+18,'A')); svg.appendChild(textEl(BX-16,BY+18,'B')); svg.appendChild(textEl(C.x-12,C.y+18,'C')); svg.appendChild(textEl(D.x-10,D.y-8,'D'));
+        svg.appendChild(textEl(BX+50,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
+        svg.appendChild(textEl(BX-130,BY-6,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd'));
+      }
+      return {id,prompt,steps,x,diagram,tags:['supplementary','straight','adjacent']};
     }
 
-    function checkAnswer(){
-      const raw=ansInput.value.trim(); if(!raw) return;
-      const val=evalFraction(raw);
-      if(val===null){feedback.textContent='Enter a valid number.';return;}
-      if(Math.abs(val-current.x)<1e-9){
-        score+=100; streak++; scoreEl.textContent=score; streakEl.textContent=streak;
-        feedback.textContent='✅ Correct!'; stepsBox.hidden=false; stepsBox.innerHTML=current.steps;
-        setTimeout(nextProblem,1000);
-      } else {streak=0; streakEl.textContent=streak; feedback.textContent='❌ Try again';}
+    function genComplementary(){
+      const a=randInt(1,3), c=randInt(1,3), b=randInt(-5,30), d=randInt(-5,30);
+      const x=(90-(b+d))/(a+c); const id=++seq;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. If they’re complementary (sum 90°), solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 → ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 → x = ${x}`;
+      function diagram(){ drawBase();
+        const A=polar(BX,BY,150,0), C=polar(BX,BY,150,90), D=polar(BX,BY,150,50);
+        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y)); svg.appendChild(line(BX,BY,D.x,D.y));
+        svg.appendChild(arc(BX,BY,44,0,50)); svg.appendChild(arc(BX,BY,44,50,90));
+        svg.appendChild(circle(BX,BY,4));
+        svg.appendChild(textEl(A.x+6,A.y+18,'A')); svg.appendChild(textEl(BX-16,BY+18,'B')); svg.appendChild(textEl(C.x-14,C.y-8,'C')); svg.appendChild(textEl(D.x-10,D.y-8,'D'));
+        svg.appendChild(textEl(BX+48,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
+        svg.appendChild(textEl(BX+10,BY-52,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd'));
+      }
+      return {id,prompt,steps,x,diagram,tags:['complementary','adjacent']};
     }
 
-    function evalFraction(str){
-      if(/^[-+]?\\d+(?:\\.\\d+)?$/.test(str)) return Number(str);
-      const m=str.match(/([-+]?\\d+(?:\\.\\d+)?)\\s*\\/\\s*([-+]?\\d+(?:\\.\\d+)?)/);
-      if(m){const n=Number(m[1]); const d=Number(m[2]); if(d!==0) return n/d;}
+    function genBisector(){
+      const total=[80,100,120,140][randInt(0,3)], half=total/2;
+      const a=randInt(1,4), c=randInt(1,4), b=randInt(-5,25);
+      let d=b + (a-c)*randInt(0,5); // keep solvable with integer-ish x
+      const x=(d-b)/(a-c); const id=++seq;
+      const prompt=`Ray BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
+      const steps=`Bisector → two equal parts ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} → x = ${(d-b)}/${(a-c)} = ${x}`;
+      function diagram(){ drawBase();
+        const A=polar(BX,BY,150,20), C=polar(BX,BY,150,20+total), D=polar(BX,BY,150,20+half);
+        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y)); svg.appendChild(line(BX,BY,D.x,D.y));
+        svg.appendChild(arc(BX,BY,44,20,20+half)); svg.appendChild(arc(BX,BY,44,20+half,20+total));
+        // equal tick arcs
+        svg.appendChild(arc(BX,BY,54,28,20+half-8,'#a7f3d0',2)); svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'#a7f3d0',2));
+        svg.appendChild(circle(BX,BY,4));
+        svg.appendChild(textEl(A.x+6,A.y+18,'A')); svg.appendChild(textEl(BX-16,BY+18,'B')); svg.appendChild(textEl(C.x-10,C.y-8,'C')); svg.appendChild(textEl(D.x-10,D.y-8,'D'));
+        svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
+        svg.appendChild(textEl(BX+8,BY-50,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd'));
+      }
+      return {id,prompt,steps,x,diagram,tags:['bisector','congruent']};
+    }
+
+    function genPerpendicular(){
+      const a=randInt(1,4), b=randInt(-10,25); const x=(90-b)/a; const id=++seq;
+      const prompt=`BA ⟂ BC at B. If m∠ABC = ${a}x ${b>=0?'+':''}${b}°, solve for x.`;
+      const steps=`Perpendicular → 90°: ${a}x ${b>=0?'+':''}${b} = 90 → x = ${x}`;
+      function diagram(){ drawBase();
+        const A=polar(BX,BY,150,0), C=polar(BX,BY,150,90);
+        svg.appendChild(line(BX,BY,A.x,A.y)); svg.appendChild(line(BX,BY,C.x,C.y));
+        svg.appendChild(circle(BX,BY,4)); svg.appendChild(arc(BX,BY,40,0,90));
+        svg.appendChild(textEl(A.x+6,A.y+18,'A')); svg.appendChild(textEl(BX-16,BY+18,'B')); svg.appendChild(textEl(C.x-14,C.y-8,'C'));
+        svg.appendChild(textEl(BX+50,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd'));
+      }
+      return {id,prompt,steps,x,diagram,tags:['perpendicular','right']};
+    }
+
+    const GENERATORS=[genRightAngle, genComplementary, genSupplementary, genBisector, genPerpendicular];
+
+    // ===== Parsing (decimals or fractions) =====
+    function parseNum(s){
+      if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s);
+      const m = s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/);
+      if(m){ const n = Number(m[1]); const d = Number(m[2]); if(d!==0) return n/d; }
       return null;
     }
 
-    function startGame(){score=0;streak=0;time=60;scoreEl.textContent=0;streakEl.textContent=0;timeEl.textContent=time;running=true;nextProblem(); clearInterval(timer); timer=setInterval(()=>{time--; timeEl.textContent=time; if(time<=0){clearInterval(timer); running=false; prompt.textContent='⏰ Time up!';}},1000)}
+    // ===== Game flow =====
+    function startGame(){
+      score=0; streak=0; time=90; running=true;
+      scoreEl.textContent=0; streakEl.textContent=0; timeEl.textContent=time;
+      feedback.textContent=''; stepsBox.hidden=true; checkBtn.disabled=false; nextBtn.classList.add('hidden');
+      clearInterval(timer);
+      timer=setInterval(()=>{ time--; timeEl.textContent=time; if(time<=0){ clearInterval(timer); running=false; promptEl.textContent='⏰ Time up!'; checkBtn.disabled=true; } },1000);
+      nextProblem();
+    }
 
-    checkBtn.addEventListener('click',checkAnswer);
-    startBtn.addEventListener('click',startGame);
+    function nextProblem(){
+      if(!running) return;
+      const make = GENERATORS[Math.floor(Math.random()*GENERATORS.length)];
+      current = make();
+      promptEl.innerHTML=current.prompt;
+      current.diagram();
+      ansInput.value='';
+      stepsBox.hidden=true; feedback.textContent=''; nextBtn.classList.add('hidden');
+    }
+
+    function checkAnswer(){
+      if(!running||!current) return;
+      const v = parseNum(ansInput.value.trim());
+      if(v===null){ feedback.textContent='Enter a valid number (e.g., 12 or 25/2).'; return; }
+      const ok = Math.abs(v - current.x) < 1e-9;
+      if(ok){
+        score += 100; streak++;
+        scoreEl.textContent = score; streakEl.textContent = streak;
+        feedback.textContent='✅ Correct!';
+        stepsBox.hidden=false; stepsBox.innerHTML=current.steps;
+        nextBtn.classList.remove('hidden');
+      }else{
+        streak=0; streakEl.textContent=streak; feedback.textContent='❌ Try again.';
+      }
+    }
+
+    // ===== Wire up events =====
+    checkBtn.addEventListener('click', checkAnswer);
+    nextBtn.addEventListener('click', nextProblem);
+    ansInput.addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+    startBtn.addEventListener('click', startGame);
   </script>
 </body>
 </html>
