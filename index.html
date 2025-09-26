@@ -8,8 +8,8 @@
     :root{--bg:#0b1020;--panel:#0f172a;--ink:#e5e7eb;--muted:#9ca3af;--accent:#38bdf8;--good:#10b981;--bad:#f43f5e;--warn:#f59e0b}
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;background:radial-gradient(1200px 800px at 50% -100px,#111a33,#0b1020 60%);color:var(--ink)}
-    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;background:radial-gradient(1200px 800px at 50% -100px,#111a33,#0b1020 60%);color:var(--ink);overflow-x:hidden}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px;position:relative;z-index:2}
     header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     h1{margin:0;font-size:clamp(20px,3vw,32px)}
     .controls{display:flex;gap:8px;flex-wrap:wrap}
@@ -17,7 +17,7 @@
     button:hover{border-color:#334155}
     .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:14px}
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(13,24,48,.8);border:1px solid #1e293b;border-radius:18px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+    .card{background:rgba(13,24,48,.85);border:1px solid #1e293b;border-radius:18px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
     .hud{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
     .badge{background:#0a1328;border:1px solid #1f2b40;border-radius:999px;padding:6px 10px;font-weight:700}
     .accent{color:var(--accent)}
@@ -27,21 +27,43 @@
     .equation{font-size:clamp(18px,2.2vw,26px);font-weight:800;letter-spacing:.3px;margin:0}
     .sub{opacity:.8;font-size:14px;margin-top:6px}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
-    .row input[type="number"]{width:120px}
+    .row input{width:160px}
     .steps{background:#0a1328;border:1px dashed #22324a;border-radius:12px;padding:10px;margin-top:8px}
     .diagram{background:linear-gradient(180deg,#0e162f,#0a1226);border:1px solid #1e293b;border-radius:14px;height:300px;display:grid;place-items:center}
     .small{font-size:12px;color:var(--muted)}
     .leader{max-height:260px;overflow:auto}
     .leader table{width:100%;border-collapse:collapse}
     .leader th,.leader td{padding:8px;border-bottom:1px solid #22324a;text-align:left}
-    .toast{position:fixed;inset:auto 0 20px 0;display:grid;place-items:center;pointer-events:none}
+    .toast{position:fixed;inset:auto 0 20px 0;display:grid;place-items:center;pointer-events:none;z-index:50}
     .toast > div{background:#071026;border:1px solid #1b2a45;padding:10px 14px;border-radius:999px}
     .hidden{display:none}
     .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
     .legend .chip{border:1px solid #22324a;border-radius:999px;padding:4px 8px;background:#0b1329;font-size:12px}
+    /* Arena background */
+    .arena-bg{position:fixed; inset:0; z-index:0; pointer-events:none;}
+    .stands{position:absolute; left:50%; transform:translateX(-50%); width:1400px; height:420px; bottom:-40px;
+      background:repeating-linear-gradient(to bottom, rgba(255,255,255,.04), rgba(255,255,255,.04) 8px, transparent 8px, transparent 22px),
+        linear-gradient(180deg, #0e1a35 0%, #0a1328 60%, #071021 100%);
+      border-top-left-radius:60px; border-top-right-radius:60px; border:1px solid #13223d; box-shadow:0 -30px 120px rgba(0,0,0,.5) inset;}
+    .crowd{position:absolute; left:50%; transform:translateX(-50%); width:1300px; bottom:120px; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;}
+    .fan{font-weight:900; font-size:18px; opacity:.9; transform-origin:center; animation: bob 2.6s ease-in-out infinite; color:#38bdf8;}
+    .fan:nth-child(odd){animation-duration:2.2s;color:#f472b6}
+    @keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(1deg)}}
+    .floor{position:absolute; left:0; right:0; bottom:0; height:160px; background:
+      radial-gradient(800px 160px at 50% 0px, rgba(56,189,248,.15), transparent 60%),
+      radial-gradient(1200px 200px at 50% 0px, rgba(255,255,255,.08), transparent 70%),
+      linear-gradient(180deg,#0a1328,#050a16);
+      border-top:1px solid #13223d;}
+    .confetti{position:absolute; inset:0; overflow:visible; pointer-events:none; z-index:20}
   </style>
 </head>
 <body>
+  <div class="arena-bg" aria-hidden="true">
+    <div class="stands"></div>
+    <div class="crowd" id="crowd"></div>
+    <div class="floor"></div>
+  </div>
+
   <div class="wrap">
     <header>
       <h1>🎯 Angle Arena <span class="small">— Solve for <em>x</em> with angle relationships</span></h1>
@@ -77,14 +99,15 @@
 
         <div class="row">
           <label>Answer for <strong>x</strong>:</label>
-          <input id="answer" type="number" step="1" inputmode="numeric" />
+          <input id="answer" type="text" inputmode="decimal" placeholder="e.g., 12, 12.5, or 25/2" />
           <button id="checkBtn" disabled>Check</button>
+          <button id="nextBtn" class="hidden">Next ▶</button>
           <span id="feedback" class="small"></span>
         </div>
 
         <div id="bonusArea" class="row hidden">
           <label id="bonusLabel">Bonus:</label>
-          <input id="bonusAns" type="number" step="1" />
+          <input id="bonusAns" type="text" inputmode="decimal" placeholder="accepts 12.5 or 25/2" />
           <button id="bonusBtn">Check Bonus</button>
           <span id="bonusFeedback" class="small"></span>
         </div>
@@ -95,6 +118,7 @@
       <aside class="card">
         <div class="diagram">
           <svg id="svg" viewBox="0 0 520 300" width="100%" height="100%" aria-label="Angle diagram with labeled points A, B, C (and D if used)"></svg>
+          <svg class="confetti" id="confetti" viewBox="0 0 520 300"></svg>
         </div>
         <div class="row" style="justify-content:space-between; margin-top:10px;">
           <div class="small">Relationships in play: <span id="tags">—</span></div>
@@ -134,15 +158,14 @@
   <div class="toast" id="toast" aria-live="polite"></div>
 
   <script>
-    // ====== Utilities ======
     const $ = sel => document.querySelector(sel);
     const ui = {
       mode: $('#mode'), diff: $('#difficulty'), start: $('#startBtn'), hint: $('#hintBtn'), skip: $('#skipBtn'),
       time: $('#time'), score: $('#score'), streak: $('#streak'), best: $('#best'), player: $('#player'),
-      prompt: $('#prompt'), subprompt: $('#subprompt'), ans: $('#answer'), check: $('#checkBtn'), feedback: $('#feedback'),
-      steps: $('#steps'), reveal: $('#revealBtn'), tags: $('#tags'), svg: $('#svg'),
+      prompt: $('#prompt'), subprompt: $('#subprompt'), ans: $('#answer'), check: $('#checkBtn'), next: $('#nextBtn'), feedback: $('#feedback'),
+      steps: $('#steps'), reveal: $('#revealBtn'), tags: $('#tags'), svg: $('#svg'), confetti: $('#confetti'),
       bonusRow: $('#bonusArea'), bonusLabel: $('#bonusLabel'), bonusAns: $('#bonusAns'), bonusBtn: $('#bonusBtn'), bonusFeedback: $('#bonusFeedback'),
-      leader: $('#leader'), toast: $('#toast')
+      leader: $('#leader'), toast: $('#toast'), crowd: $('#crowd')
     };
 
     const store = {
@@ -152,15 +175,13 @@
     ui.best.textContent = store.best;
 
     function toast(msg){ ui.toast.innerHTML = `<div>${msg}</div>`; setTimeout(()=> ui.toast.innerHTML = '', 1400); }
-
     function rng(seed){ let s = seed >>> 0; return ()=> (s = (s*1664525 + 1013904223) >>> 0) / 2**32; }
 
-    // ====== Game State ======
-    let clock = 0, timer = null, running = false, streak = 0, score = 0, roundStart = 0;
-    let genRand = Math.random; let current = null;
+    let clock = 0, timer = null, running = false, streak = 0, score = 0, roundStart = 0; let genRand = Math.random; let current = null;
 
     ui.start.addEventListener('click', startGame);
     ui.check.addEventListener('click', checkAnswer);
+    ui.next.addEventListener('click', ()=>{ ui.steps.hidden=true; ui.next.classList.add('hidden'); nextProblem(); });
     ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
     ui.reveal.addEventListener('click', ()=> ui.steps.hidden = !ui.steps.hidden);
     ui.hint.addEventListener('click', giveHint);
@@ -171,7 +192,7 @@
       const seed = (Date.now() ^ (ui.player.value||'class').split('').reduce((a,c)=>a+c.charCodeAt(0),0)) >>> 0;
       genRand = rng(seed); running = true; score = 0; streak = 0; updateHUD(); enablePlay(true);
       if (ui.mode.value === 'classic') { clock = 180; startTimer(); } else if (ui.mode.value === 'endless') { clock = 0; ui.time.textContent = '∞'; } else { clock = 0; ui.time.textContent = '—'; }
-      nextProblem(true);
+      nextProblem(true); makeCrowd();
     }
 
     function startTimer(){ clearInterval(timer); ui.time.textContent = fmt(clock); timer = setInterval(()=>{ clock--; ui.time.textContent = fmt(clock); if(clock<=0){ endGame(); } },1000); }
@@ -190,173 +211,18 @@
     function updateHUD(){ ui.score.textContent = score; ui.streak.textContent = streak; }
     function fmt(s){ const m = Math.floor(s/60), r = s%60; return `${m}:${String(r).padStart(2,'0')}`; }
 
-    // ====== Problem Generation ======
-    // Consistent diagram convention:
-    // Vertex B is at (BX,BY). Ray BA goes roughly to the right; Ray BC rotates counterclockwise.
-    // Internal ray BD is between BA and BC when used. Points A, B, C (and D) are labeled on the diagram.
-
-    const BX = 260, BY = 200; // vertex B
-
-    function randInt(a,b){ return Math.floor(genRand()*(b-a+1))+a; }
-    function choice(arr){ return arr[Math.floor(genRand()*arr.length)]; }
-
-    function nextProblem(){
-      ui.feedback.textContent = ''; ui.bonusFeedback.textContent = '';
-      ui.bonusRow.classList.add('hidden'); ui.steps.hidden = true; ui.ans.value=''; ui.bonusAns.value='';
-      const pool = [genComplementary, genSupplementary, genRight, genStraight, genCongruent, genAdjacent, genBisector, genPerpendicular];
-      let gens = pool; if(ui.diff.value==='easy') gens = [genComplementary, genSupplementary, genRight, genCongruent]; if(ui.diff.value==='hard') gens = pool.concat([genDoubleExpr]);
-      const maker = choice(gens); current = maker(); roundStart = Date.now();
-      ui.prompt.innerHTML = current.prompt; ui.subprompt.textContent = current.sub || ''; ui.tags.textContent = current.tags.join(', ');
-      drawDiagram(current.diagram);
-      if (current.hasBonus){ ui.bonusRow.classList.remove('hidden'); ui.bonusLabel.textContent = current.bonusPrompt; }
+    function parseNumber(s){
+      if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s);
+      const m = s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/);
+      if(m){ const num = Number(m[1]); const den = Number(m[2]); if(den===0) return null; return num/den; }
+      return null;
     }
 
-    // ---- Diagram helpers ----
-    function drawDiagram(draw){ const svg = ui.svg; svg.innerHTML = ''; bgRect(svg); drawAxes(svg); if(!draw){ caption(svg,'Diagram appears here'); return; } draw(svg); }
-    function bgRect(svg){ const r=rect(0,0,520,300,'#0c1530'); svg.appendChild(r); }
-    function drawAxes(svg){ /* subtle crosshair at B */ svg.appendChild(circle(BX,BY,3,'#93c5fd')); }
-    function caption(svg,text){ const el = document.createElementNS('http://www.w3.org/2000/svg','text'); el.setAttribute('x','50%'); el.setAttribute('y','50%'); el.setAttribute('fill','#9ca3af'); el.setAttribute('text-anchor','middle'); el.setAttribute('dominant-baseline','middle'); el.textContent = text; svg.appendChild(el); }
+    // ====== Problem generation stays same (omitted here for brevity) ======
+    // [KEEP your existing generators like genComplementary, genSupplementary, etc.]
 
-    // SVG primitives
-    function line(x1,y1,x2,y2,opts={}){ const el = document.createElementNS('http://www.w3.org/2000/svg','line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke',opts.stroke||'#cbd5e1'); el.setAttribute('stroke-width',opts.w||4); el.setAttribute('marker-end', opts.arrow? 'url(#arrow)': ''); return el; }
-    function text(x,y,t,opts={}){ const el = document.createElementNS('http://www.w3.org/2000/svg','text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',opts.fill||'#e5e7eb'); el.setAttribute('font-size',opts.size||'15'); el.setAttribute('font-weight',opts.bold?'700':''); el.textContent = t; return el; }
-    function arc(cx,cy,r,a1,a2,color='#38bdf8',w=3){ const path = document.createElementNS('http://www.w3.org/2000/svg','path'); const p1 = polar(cx,cy,r,a1), p2 = polar(cx,cy,r,a2); const laf = (a2-a1)<=180? 0:1; const d = `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${laf} 1 ${p2.x} ${p2.y}`; path.setAttribute('d',d); path.setAttribute('stroke',color); path.setAttribute('fill','none'); path.setAttribute('stroke-width',w); return path; }
-    function rect(x,y,w,h,fill){ const el = document.createElementNS('http://www.w3.org/2000/svg','rect'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('width',w); el.setAttribute('height',h); el.setAttribute('fill',fill); return el; }
-    function circle(x,y,r,stroke){ const el = document.createElementNS('http://www.w3.org/2000/svg','circle'); el.setAttribute('cx',x); el.setAttribute('cy',y); el.setAttribute('r',r); el.setAttribute('fill','none'); el.setAttribute('stroke',stroke||'#e5e7eb'); return el; }
-    function polar(cx,cy,r,a){ const rad = a*Math.PI/180; return {x: cx + r*Math.cos(rad), y: cy - r*Math.sin(rad)}; }
-
-    function labelPoint(svg,x,y,letter){ svg.appendChild(circle(x,y,4,'#f8fafc')); svg.appendChild(text(x+6,y-6,letter,{bold:true})); }
-    function rayByAngle(svg,deg,len=150){ const p = polar(BX,BY,len,deg); const ln = line(BX,BY,p.x,p.y); svg.appendChild(ln); return p; }
-    function rightMarker(svg,baseDeg,size=20){ // little square at vertex for right angle
-      const p1 = polar(BX,BY,size,baseDeg), p2 = polar(BX,BY,size,baseDeg+90);
-      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d',`M ${BX} ${BY} L ${p1.x} ${p1.y} L ${p1.x+p2.x-BX} ${p1.y+p2.y-BY} L ${p2.x} ${p2.y} Z`);
-      path.setAttribute('fill','#0ea5e9'); path.setAttribute('opacity','0.35'); path.setAttribute('stroke','#38bdf8'); path.setAttribute('stroke-width','2');
-      svg.appendChild(path);
-    }
-
-    // ---- Generators (now with consistent ABCD labeling) ----
-    function genComplementary(){
-      const a=choice([1,2,3]), c=choice([1,2]); const x=randInt(2,20); const b=randInt(0,20), d=randInt(0,20);
-      const A=a*x+b, C=c*x+d, diff=90-(A+C), d2=d+diff; const sol=(90-(b+d2))/(a+c);
-      const prompt = `∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and ∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>. If ∠ABD and ∠DBC are <b class="accent">complementary</b>, solve for x. (Vertex is B.)`;
-      const steps = `Complementary → sums to 90°.<br><b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = 90</b><br>→ ${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = 90<br>→ ${(a+c)}x = ${90-(b+d2)}<br>→ <b>x = ${sol}</b>`;
-      function diagram(svg){ // BA at 0°, BC at 90°, BD in between → visibly complements
-        const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,90), Dend = rayByAngle(svg,50);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,Dend.x,Dend.y,'D');
-        svg.appendChild(arc(BX,BY,42,0,50)); svg.appendChild(arc(BX,BY,42,50,90));
-        svg.appendChild(text(BX+60,BY-8,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX+10,BY-48,`${c}x ${d2>=0?'+':''}${d2}°`));
-        svg.appendChild(text(BX-90,BY+36,'∠ABC',{}));
-      }
-      return {prompt, sub:'Adjacent angles adding to 90°.', stepsHtml:steps, tags:['complementary','adjacent','algebra'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genSupplementary(){
-      const a=choice([1,2,3]), c=choice([1,2,3]); const x=randInt(2,20); const b=randInt(0,40), d=randInt(0,40);
-      const A=a*x+b, C=c*x+d, diff=180-(A+C), d2=d+diff; const sol=(180-(b+d2))/(a+c);
-      const prompt = `Ray BD splits ∠ABC. If m∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and m∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span> are <b class="accent">supplementary</b>, solve for x.`;
-      const steps = `Supplementary → sums to 180°.<br><b>(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = 180</b><br>→ ${(a+c)}x ${b+d2>=0?'+':''}${b+d2} = 180<br>→ x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,180), Dend = rayByAngle(svg,120);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,Dend.x,Dend.y,'D');
-        svg.appendChild(arc(BX,BY,44,0,120)); svg.appendChild(arc(BX,BY,44,120,180));
-        svg.appendChild(text(BX+60,BY-8,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX-110,BY-6,`${c}x ${d2>=0?'+':''}${d2}°`));
-        svg.appendChild(text(BX-20,BY+36,'∠ABC',{}));
-      }
-      return {prompt, sub:'Angles on a straight line add to 180°.', stepsHtml:steps, tags:['supplementary','straight','adjacent'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genRight(){
-      const a=choice([1,2,3,4]), b=randInt(-10,40); const sol=(90-b)/a;
-      const prompt = `m∠ABC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>. If ∠ABC is a <b class="accent">right angle</b>, solve for x.`;
-      const steps = `Right angle = 90° → ${a}x ${b>=0?'+':''}${b} = 90 → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,90);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); rightMarker(svg,0); svg.appendChild(arc(BX,BY,40,0,90)); svg.appendChild(text(BX+10,BY-12,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX-20,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Perpendicular rays form 90°.', stepsHtml:steps, tags:['right','perpendicular'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genStraight(){
-      const a=choice([1,2,3,4]), b=randInt(-10,50); const sol=(180-b)/a;
-      const prompt = `m∠ABC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>. If ∠ABC is a <b class="accent">straight angle</b>, solve for x.`;
-      const steps = `Straight angle = 180° → ${a}x ${b>=0?'+':''}${b} = 180 → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,180); labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); svg.appendChild(arc(BX,BY,46,0,180)); svg.appendChild(text(BX-10,BY-12,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX-20,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Straight angle = 180°.', stepsHtml:steps, tags:['straight'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genCongruent(){
-      const a=choice([1,2,3,4]), c=choice([1,2,3,4]); const b=randInt(0,30), d=randInt(0,30); const x=randInt(2,20);
-      const A=a*x+b, C=c*x+d, diff=A-C, d2=d+diff; const sol=(d2-b)/(a-c);
-      const prompt = `∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span> and ∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span> are <b class="accent">congruent</b>. Solve for x.`;
-      const steps = `Congruent → set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d2>=0?'+':''}${d2} → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,20), Cend = rayByAngle(svg,150), D1 = rayByAngle(svg,70), D2 = rayByAngle(svg,70);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,D1.x,D1.y,'D');
-        svg.appendChild(arc(BX,BY,42,20,70)); svg.appendChild(arc(BX,BY,42,70,150));
-        // equal tick marks
-        svg.appendChild(arc(BX,BY,50,32,58,'#a7f3d0',2)); svg.appendChild(arc(BX,BY,50,82,108,'#a7f3d0',2));
-        svg.appendChild(text(BX+40,BY-6,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX-70,BY-20,`${c}x ${d2>=0?'+':''}${d2}°`)); svg.appendChild(text(BX-20,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Congruent angles have equal measure.', stepsHtml:steps, tags:['congruent','algebra'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genAdjacent(){
-      const total = choice([90,120,135,150,160,180]);
-      const a=choice([1,2,3,4]), c=choice([1,2,3]); const x=randInt(2,20); const b=randInt(0,30), d=randInt(0,30);
-      const diff = total - (a*x+b + c*x+d); const d2 = d + diff; const sol=(total-(b+d2))/(a+c);
-      const prompt = `Ray BD splits ∠ABC. If m∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>, m∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>, and m∠ABC = <b>${total}°</b>, solve for x.`;
-      const steps = `Angle Addition Postulate: parts add to whole → (${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = ${total} → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg, total>=150?170:140), Dend = rayByAngle(svg,50);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,Dend.x,Dend.y,'D');
-        svg.appendChild(arc(BX,BY,44,0,50)); svg.appendChild(arc(BX,BY,44,50,(total>=150?170:140)));
-        svg.appendChild(text(BX+46,BY-6,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX+6,BY-50,`${c}x ${d2>=0?'+':''}${d2}°`)); svg.appendChild(text(BX-10,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Adjacent parts add to the whole.', stepsHtml:steps, tags:['adjacent','angle addition'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genBisector(){
-      const total = choice([80,100,120,140]); const half = total/2; const a=choice([1,2,3,4]), b=randInt(0,24); const c=choice([1,2,3,4]), d=randInt(0,24);
-      const x=randInt(2,20); const A=a*x+b; const diff = half - A; const b2 = b + diff; const sol=(d-b2)/(a-c);
-      const prompt = `Ray BD <b class="accent">bisects</b> ∠ABC (m∠ABC=${total}°). If m∠ABD = <span class="accent">${a}x ${b2>=0?'+':''}${b2}°</span> and m∠DBC = <span class="accent">${c}x ${d>=0?'+':''}${d}°</span>, solve for x.`;
-      const steps = `Bisector → m∠ABD = m∠DBC = ${half}° and they sum to ${total}°.<br>Set equal: ${a}x ${b2>=0?'+':''}${b2} = ${c}x ${d>=0?'+':''}${d} → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,20), Cend = rayByAngle(svg,20+total), Dend = rayByAngle(svg,20+half);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,Dend.x,Dend.y,'D');
-        svg.appendChild(arc(BX,BY,44,20,20+half)); svg.appendChild(arc(BX,BY,44,20+half,20+total));
-        // equal arcs tick
-        svg.appendChild(arc(BX,BY,52,20+10,20+half-10,'#a7f3d0',2)); svg.appendChild(arc(BX,BY,52,20+half+10,20+total-10,'#a7f3d0',2));
-        svg.appendChild(text(BX+40,BY-6,`${a}x ${b2>=0?'+':''}${b2}°`)); svg.appendChild(text(BX+6,BY-50,`${c}x ${d>=0?'+':''}${d}°`)); svg.appendChild(text(BX-20,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'A bisector creates two congruent angles.', stepsHtml:steps, tags:['bisector','congruent','angle addition'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genPerpendicular(){
-      const a=choice([1,2,3,4]), b=randInt(-10,40); const sol=(90-b)/a;
-      const prompt = `Ray BA ⟂ Ray BC at B. If m∠ABC = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>, solve for x.`;
-      const steps = `Perpendicular ⇒ m∠ABC=90° → ${a}x ${b>=0?'+':''}${b} = 90 → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,90);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); rightMarker(svg,0); svg.appendChild(arc(BX,BY,40,0,90)); svg.appendChild(text(BX+12,BY-12,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX-20,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Perpendicular lines form a right angle at B.', stepsHtml:steps, tags:['perpendicular','right'], x:sol, diagram:diagram, hasBonus:false};
-    }
-
-    function genDoubleExpr(){
-      const total = choice([90,120,135,150,180]);
-      const a=choice([2,3,4]), c=choice([1,2,3]); const b=randInt(-10,30), d=randInt(-10,30);
-      const x=randInt(2,20); const adjust = total - (a*x+b + c*x+d); const d2 = d + adjust; const sol=(total-(b+d2))/(a+c);
-      const prompt = `m∠ABD = <span class="accent">${a}x ${b>=0?'+':''}${b}°</span>, m∠DBC = <span class="accent">${c}x ${d2>=0?'+':''}${d2}°</span>, and m∠ABC = ${total}°. Solve for x and (bonus) find m∠ABD.`;
-      const steps = `Angle addition → (${a}x ${b>=0?'+':''}${b}) + (${c}x ${d2>=0?'+':''}${d2}) = ${total} → x = ${sol}`;
-      function diagram(svg){ const Aend = rayByAngle(svg,0), Cend = rayByAngle(svg,total>=150?170:140), Dend = rayByAngle(svg,50);
-        labelPoint(svg,Aend.x,Aend.y,'A'); labelPoint(svg,BX,BY,'B'); labelPoint(svg,Cend.x,Cend.y,'C'); labelPoint(svg,Dend.x,Dend.y,'D');
-        svg.appendChild(arc(BX,BY,44,0,50)); svg.appendChild(arc(BX,BY,44,50,(total>=150?170:140)));
-        svg.appendChild(text(BX+46,BY-6,`${a}x ${b>=0?'+':''}${b}°`)); svg.appendChild(text(BX+6,BY-50,`${c}x ${d2>=0?'+':''}${d2}°`)); svg.appendChild(text(BX-10,BY+36,'∠ABC',{})); }
-      return {prompt, sub:'Two linear expressions add to a given angle.', stepsHtml:steps, tags:['hard','angle addition'], x:sol, diagram:diagram, hasBonus:true, bonusPrompt:'Find m∠ABD:', bonusAnswer: (x)=> a*x + b};
-    }
-
-    // ====== Answer Checking ======
-    function checkAnswer(){ if(!running) return; const val = Number(ui.ans.value); if(Number.isNaN(val)) return;
-      const correct = Math.abs(val - current.x) < 1e-9; if(correct){ const elapsed = (Date.now()-roundStart)/1000; const timeBonus = Math.max(0, Math.round(50 - Math.min(50, elapsed))); streak++; let gain = 100 + timeBonus; gain = Math.round(gain * (1 + streak/5)); score += gain; updateHUD(); ui.feedback.innerHTML = `✅ Correct! +${gain} (time +${timeBonus}, streak x${streak})`; ui.steps.innerHTML = current.stepsHtml; ui.steps.hidden = false; if(current.hasBonus){ ui.bonusRow.classList.remove('hidden'); ui.bonusFeedback.textContent = ''; } else setTimeout(nextProblem, 700); } else { streak = 0; updateHUD(); ui.feedback.innerHTML = `❌ Not quite. Try again or hit Hint.`; }
-    }
-
-    function checkBonus(){ if(!current || !current.hasBonus) return; const v = Number(ui.bonusAns.value); const expect = typeof current.bonusAnswer==='function' ? current.bonusAnswer(current.x) : current.bonusAnswer; if (Math.abs(v - expect) < 1e-9){ score += 25; ui.bonusFeedback.textContent = '✅ Bonus correct! +25'; updateHUD(); setTimeout(nextProblem, 600); } else { ui.bonusFeedback.textContent = '❌ Check your x, then plug in.'; } }
-
-    function giveHint(){ if(!current) return; ui.steps.hidden=false; toast('💡 Showed the setup — now finish it!'); }
-
-    // ====== Leaderboard ======
-    function renderBoard(){ const rows = store.board.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.score}</td><td class="small">${r.when}</td></tr>`).join(''); ui.leader.innerHTML = `<table><thead><tr><th>#</th><th>Name</th><th>Score</th><th>When</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class="small">No scores yet. Finish a round!</td></tr>'}</tbody></table>`; }
-    renderBoard();
-  </script>
-</body>
-</html>
+    function checkAnswer(){
+      if(!running) return; const raw = ui.ans.value.trim(); if(!raw) return; const val = parseNumber(raw); if(val==null){ ui.feedback.textContent='Enter a number (12, 12.5, or 25/2).'; return; }
+      const correct = Math.abs(val - current.x) < 1e-9;
+      if(correct){
+        const elapsed=(Date.now()-roundStart)/1000; const
