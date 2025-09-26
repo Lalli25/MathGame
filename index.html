@@ -8,6 +8,7 @@
     :root{
       --ink:#f8fafc; --muted:#a3b1c6; --accent:#22d3ee; --grass:#0f8a2c; --dirt:#8b5e34;
       --panel:#0b1324; --line:#e5e7eb; --chalk:#e2e8f0; --sky1:#0ea5e9; --sky2:#0f172a;
+      --hl:#93c5fd; --tick:#a7f3d0;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -117,7 +118,7 @@
         <div id="steps" class="steps" hidden></div>
         <div class="legend">
           <div class="chip">Labeled points A, B, C (and D) shown on the diagram</div>
-          <div class="chip">Relationships include: right, complementary, supplementary, bisector, perpendicular</div>
+          <div class="chip">Relationships: right, complementary, supplementary, bisector, perpendicular</div>
         </div>
       </section>
 
@@ -182,81 +183,96 @@
     function setOuts(n){ outs=n; [ui.o1,ui.o2,ui.o3].forEach((d,i)=> d.classList.toggle('on', i < outs)); }
     function showToast(t){ ui.toast.textContent=t; ui.toast.style.opacity='1'; setTimeout(()=> ui.toast.style.opacity='0', 1100); }
 
-    // =============== Math Questions ===============
-    const BX=260, BY=200; // vertex B in diagram
+    // =============== Math Diagram Helpers (Refined) ===============
+    const BX=260, BY=210; // Vertex B slightly down to leave headroom
     function NS(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
     function drawBase(){ ui.svg.innerHTML=''; const bg=NS('rect'); bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',520); bg.setAttribute('height',300); bg.setAttribute('fill','#0b142a'); ui.svg.appendChild(bg); }
-    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#e5e7eb'); el.setAttribute('stroke-width','3'); return el; }
-    function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-weight','800'); el.textContent=t; return el; }
-    function arc(cx,cy,r,a1,a2,color='#38bdf8',w=3){
-      const el=NS('path'); const P1=polar(cx,cy,r,a1), P2=polar(cx,cy,r,a2); const laf=(a2-a1)<=180?0:1;
-      el.setAttribute('d',`M ${P1.x} ${P1.y} A ${r} ${r} 0 ${laf} 1 ${P2.x} ${P2.y}`); el.setAttribute('fill','none'); el.setAttribute('stroke',color); el.setAttribute('stroke-width',w); return el;
-    }
+    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#e5e7eb'); el.setAttribute('stroke-width','3'); el.setAttribute('stroke-linecap','round'); return el; }
+    function dot(x,y){ const c=NS('circle'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',4); c.setAttribute('fill','#38bdf8'); return c; }
+    function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-weight','800'); el.setAttribute('font-size','15'); el.textContent=t; return el; }
     function polar(cx,cy,r,a){ const R=a*Math.PI/180; return {x: cx + r*Math.cos(R), y: cy - r*Math.sin(R)} }
-
-    function parseNum(s){ if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s); const m=s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/); if(m){ const n=Number(m[1]), d=Number(m[2]); if(d!==0) return n/d; } return null; }
-
-    let current=null; // {prompt, steps, x, draw}
-
-    // Generator helpers that guarantee clean integers
-    function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
-
-    function genRight(){
-      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
-      const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. ∠ABC is right. Solve for x.`;
-      const steps=`Right angle = 90° ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
-      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90); ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(arc(BX,BY,40,0,90));
-        const t=NS('path'); const p1=polar(BX,BY,20,0), p2=polar(BX,BY,20,90); t.setAttribute('d',`M ${BX} ${BY} L ${p1.x} ${p1.y} L ${p1.x+p2.x-BX} ${p1.y+p2.y-BY} L ${p2.x} ${p2.y} Z`); t.setAttribute('fill','#22d3ee'); t.setAttribute('opacity','0.35'); t.setAttribute('stroke','#38bdf8'); t.setAttribute('stroke-width','2'); ui.svg.appendChild(t);
-        labelABC(A,C); ui.svg.appendChild(textEl(BX+44,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); }
-      return {prompt, steps, x, draw};
+    function arc(cx,cy,r,a1,a2,color='#38bdf8',w=3){
+      const el=NS('path'); const P1=polar(cx,cy,r,a1), P2=polar(cx,cy,r,a2); const laf=(Math.abs(a2-a1))<=180?0:1;
+      el.setAttribute('d',`M ${P1.x} ${P1.y} A ${r} ${r} 0 ${laf} ${a2>a1?1:0} ${P2.x} ${P2.y}`); el.setAttribute('fill','none'); el.setAttribute('stroke',color); el.setAttribute('stroke-width',w); return el;
     }
-
-    function genSupp(){ // (a+c)x + (b+d) = 180
-      const a=ri(1,3), c=ri(1,3), x=ri(5,60); const b=ri(-10,40), d=180-(a+c)*x - b; // solve for d to keep x integer
-      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are supplementary (sum 180°). Solve for x.`;
-      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
-      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,180), D=polar(BX,BY,140,120);
-        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,0,120)); ui.svg.appendChild(arc(BX,BY,42,120,180)); labelABCD(A,C,D);
-        ui.svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX-132,BY-6,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
-      return {prompt, steps, x, draw};
-    }
-
-    function genComp(){ // (a+c)x + (b+d) = 90
-      const a=ri(1,3), c=ri(1,3), x=ri(5,60); const b=ri(-10,30), d=90-(a+c)*x - b;
-      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are complementary (sum 90°). Solve for x.`;
-      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 ⇒ x = ${x}`;
-      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90), D=polar(BX,BY,140,50);
-        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,0,50)); ui.svg.appendChild(arc(BX,BY,42,50,90)); labelABCD(A,C,D);
-        ui.svg.appendChild(textEl(BX+44,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX+8,BY-48,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
-      return {prompt, steps, x, draw};
-    }
-
-    function genBis(){ // a x + b = c x + d, choose x then set d
-      const total=[80,100,120,140][ri(0,3)], half=total/2; const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x; // ensures equality at x
-      const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
-      const steps=`Bisector ⇒ equal parts ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
-      function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
-        ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(line(BX,BY,D.x,D.y)); ui.svg.appendChild(arc(BX,BY,42,20,20+half)); ui.svg.appendChild(arc(BX,BY,42,20+half,20+total));
-        // equal ticks
-        ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'#a7f3d0',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'#a7f3d0',2)); labelABCD(A,C,D);
-        ui.svg.appendChild(textEl(BX+42,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); ui.svg.appendChild(textEl(BX+6,BY-46,`${c}x ${d>=0?'+':''}${d}°`,'#93c5fd')); }
-      return {prompt, steps, x, draw};
-    }
-
-    function genPerp(){ // perpendicular ⇒ 90
-      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
-      const prompt=`BA ⟂ BC at B. If m∠ABC = ${a}x ${b>=0?'+':''}${b}°, solve for x.`;
-      const steps=`Perpendicular ⇒ 90°: ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
-      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90); ui.svg.appendChild(line(BX,BY,A.x,A.y)); ui.svg.appendChild(line(BX,BY,C.x,C.y)); ui.svg.appendChild(arc(BX,BY,40,0,90)); labelABC(A,C); ui.svg.appendChild(textEl(BX+46,BY-8,`${a}x ${b>=0?'+':''}${b}°`,'#93c5fd')); }
-      return {prompt, steps, x, draw};
-    }
+    function rightMarker(cx,cy,size=18){ const p1=polar(cx,cy,size,0), p2=polar(cx,cy,size,90); const t=NS('path'); t.setAttribute('d',`M ${cx} ${cy} L ${p1.x} ${p1.y} L ${p1.x+p2.x-cx} ${p1.y+p2.y-cy} L ${p2.x} ${p2.y} Z`); t.setAttribute('fill','#22d3ee'); t.setAttribute('opacity','0.35'); t.setAttribute('stroke','#38bdf8'); t.setAttribute('stroke-width','2'); return t; }
+    function labelNear(cx,cy,rad,aMid,text){ const p=polar(cx,cy,rad,aMid); return textEl(p.x+6, p.y+6, text, '#93c5fd'); }
 
     function labelABC(A,C){ ui.svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe')); ui.svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe')); ui.svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe')); }
     function labelABCD(A,C,D){ labelABC(A,C); ui.svg.appendChild(textEl(D.x-10,D.y-8,'D','#c7d2fe')); }
 
+    function drawRayTo(cx,cy,pt){ ui.svg.appendChild(line(cx,cy,pt.x,pt.y)); }
+
+    // =============== Problem Generators (all refined) ===============
+    function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+    function genRight(){ // rays at 0° and 90°
+      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
+      const prompt=`m∠ABC = ${a}x ${b>=0?'+':''}${b}°. ∠ABC is a right angle. Solve for x.`;
+      const steps=`Right angle = 90° ⇒ ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90);
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); ui.svg.appendChild(arc(BX,BY,44,0,90)); ui.svg.appendChild(rightMarker(BX,BY,20));
+        ui.svg.appendChild(dot(BX,BY)); labelABC(A,C); ui.svg.appendChild(labelNear(BX,BY,64,45,`${a}x ${b>=0?'+':''}${b}°`)); }
+      return {prompt, steps, x, draw}; }
+
+    function genSupp(){ // 0° to 180°, D between (40–140)
+      const a=ri(1,3), c=ri(1,3), x=ri(4,50); const b=ri(-10,40), d=180-(a+c)*x - b;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are supplementary (sum 180°). Solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,180), D=polar(BX,BY,140,ri(40,140));
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
+        ui.svg.appendChild(arc(BX,BY,46,0,Math.atan2(BY-D.y,D.x-BX)*180/Math.PI<0? (360+Math.atan2(BY-D.y,D.x-BX)*180/Math.PI) : Math.atan2(BY-D.y,D.x-BX)*180/Math.PI));
+        // arcs explicit using angles 0->D and D->180
+        const angD = (()=>{ const deg = Math.atan2(BY-D.y, D.x-BX)*180/Math.PI; return deg<0?deg+360:deg; })();
+        ui.svg.appendChild(arc(BX,BY,44,0,angD,'#38bdf8',3));
+        ui.svg.appendChild(arc(BX,BY,44,angD,180,'#22d3ee',3));
+        ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
+        ui.svg.appendChild(labelNear(BX,BY,62,angD/2,`${a}x ${b>=0?'+':''}${b}°`));
+        ui.svg.appendChild(labelNear(BX,BY,62,(angD+180)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
+      return {prompt, steps, x, draw}; }
+
+    function genComp(){ // 0° to 90°, D between (25–65)
+      const a=ri(1,3), c=ri(1,3), x=ri(4,50); const b=ri(-10,30), d=90-(a+c)*x - b;
+      const prompt=`Ray BD splits ∠ABC. m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. They are complementary (sum 90°). Solve for x.`;
+      const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 90 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90), D=polar(BX,BY,140,ri(25,65));
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
+        const angD = (()=>{ const deg = Math.atan2(BY-D.y, D.x-BX)*180/Math.PI; return deg<0?deg+360:deg; })();
+        ui.svg.appendChild(arc(BX,BY,44,0,angD,'#38bdf8',3));
+        ui.svg.appendChild(arc(BX,BY,44,angD,90,'#22d3ee',3));
+        ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
+        ui.svg.appendChild(labelNear(BX,BY,62,angD/2,`${a}x ${b>=0?'+':''}${b}°`));
+        ui.svg.appendChild(labelNear(BX,BY,62,(angD+90)/2,`${c}x ${d>=0?'+':''}${d}°`)); }
+      return {prompt, steps, x, draw}; }
+
+    function genBis(){ // total angle fixed; D at midpoint
+      const total=[80,100,120,140][ri(0,3)], half=total/2; const a=ri(1,4), c=ri(1,4), x=ri(5,70); const b=ri(-10,25), d=a*x + b - c*x;
+      const prompt=`BD bisects ∠ABC (m∠ABC=${total}°). m∠ABD = ${a}x ${b>=0?'+':''}${b}°, m∠DBC = ${c}x ${d>=0?'+':''}${d}°. Solve for x.`;
+      const steps=`Bisector ⇒ equal parts ${half}°. Set equal: ${a}x ${b>=0?'+':''}${b} = ${c}x ${d>=0?'+':''}${d} ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
+        ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
+        // equal ticks
+        ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'var(--tick)',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
+        ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
+        ui.svg.appendChild(labelNear(BX,BY,64,20+(half/2),`${a}x ${b>=0?'+':''}${b}°`));
+        ui.svg.appendChild(labelNear(BX,BY,64,20+half+(half/2),`${c}x ${d>=0?'+':''}${d}°`)); }
+      return {prompt, steps, x, draw}; }
+
+    function genPerp(){ // 0° and 90° with right marker
+      const a=ri(1,4), x=ri(5,85), b=90 - a*x;
+      const prompt=`BA ⟂ BC at B. If m∠ABC = ${a}x ${b>=0?'+':''}${b}°, solve for x.`;
+      const steps=`Perpendicular ⇒ 90°: ${a}x ${b>=0?'+':''}${b} = 90 ⇒ x = ${x}`;
+      function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,90);
+        drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); ui.svg.appendChild(arc(BX,BY,44,0,90)); ui.svg.appendChild(rightMarker(BX,BY,20));
+        ui.svg.appendChild(dot(BX,BY)); labelABC(A,C); ui.svg.appendChild(labelNear(BX,BY,64,45,`${a}x ${b>=0?'+':''}${b}°`)); }
+      return {prompt, steps, x, draw}; }
+
     const GENS=[genRight, genSupp, genComp, genBis, genPerp];
 
     function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
+
+    function parseNum(s){ if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s); const m=s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/); if(m){ const n=Number(m[1]), d=Number(m[2]); if(d!==0) return n/d; } return null; }
 
     // =============== At-bat mini-game ===============
     const ctx = ui.atbat.getContext('2d');
@@ -283,12 +299,13 @@
     }
 
     function resolveSwing(result){ batting=false; swing=false; ui.atbat.style.pointerEvents='none';
-      if(result==='out'){ setOuts(outs+1); showToast('Whiff — OUT'); checkEnd(); return; }
+      if(result==='out'){ setOuts(outs+1); showToast('Whiff — OUT'); checkEnd(); if(running) newProblem(); return; }
       // Hit → points & bases
       hits++; points += 100; ui.hits.textContent=hits; ui.points.textContent=points;
       const { bases: nb, runs: r } = advanceRunners(bases, result);
       bases = nb; runs += r; ui.runs.textContent=runs; drawRunners();
       showToast(result.toUpperCase()+ (r?` (+${r} run${r>1?'s':''})`:'') );
+      if(running) setTimeout(newProblem, 600);
     }
 
     // Runners & bases
@@ -323,7 +340,7 @@
     function submitAnswer(){ if(!running||batting) return; const v=parseNum(ui.ans.value.trim()); if(v===null){ ui.feedback.textContent='Enter a valid number (e.g., 12 or 25/2)'; return; }
       if(Math.abs(v - current.x) < 1e-9){ ui.feedback.textContent='✅ Correct! Take your at-bat…'; ui.steps.hidden=false; ui.steps.innerHTML=current.steps; // start at bat
         setTimeout(()=>{ ui.steps.hidden=true; ui.feedback.textContent=''; ui.atbat.style.pointerEvents='auto'; startAtBat(); }, 500);
-      } else { ui.feedback.textContent='❌ Strike — that\'s an out.'; setOuts(outs+1); checkEnd(); newProblem(); }
+      } else { ui.feedback.textContent='❌ Strike — that\'s an out.'; setOuts(outs+1); checkEnd(); if(running) newProblem(); }
     }
 
     // Controls
