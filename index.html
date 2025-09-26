@@ -89,7 +89,7 @@
     <header>
       <div>
         <h1>Angle Ball ⚾</h1>
-        <div class="sub">Answer geometry questions to earn your at‑bat. Hits score points. 3 outs or 5:00 ends the game.</div>
+        <div class="sub">Answer geometry questions to earn your at-bat. Hits score points. 3 outs or 5:00 ends the game.</div>
       </div>
       <div class="hud">
         <div class="badge">⏱ Time: <span id="time" class="led">5:00</span></div>
@@ -110,7 +110,7 @@
         </div>
         <div class="row">
           <label for="answer">Answer for <b>x</b>:</label>
-          <input id="answer" type="text" inputmode="decimal" placeholder="e.g., 12 or 25/2" />
+          <input id="answer" type="text" inputmode="numeric" placeholder="Enter a whole number (e.g., 12)" />
           <button id="check" disabled>Check</button>
           <button id="skip">Skip (Out)</button>
         </div>
@@ -143,7 +143,7 @@
           <div class="toast" id="toast" aria-live="polite"></div>
         </div>
         <div class="legend" style="margin-top:8px">
-          <div class="chip">Correct answer → at-bat mini game</div>
+          <div class="chip">Correct answer → 3-sec countdown → at-bat mini game</div>
           <div class="chip">Whiff or wrong answer → out</div>
           <div class="chip">Single/Double/Triple/HR advance runners</div>
         </div>
@@ -178,13 +178,14 @@
 
     // At-bat state
     let batting=false, swing=false, ballX=40, ballY=220, ballV=4.2, plateX=260; // canvas coords
+    let countdownTimer=null, countingDown=false;
 
     function fmtTime(s){ const m=Math.floor(s/60), r=s%60; return `${m}:${String(r).padStart(2,'0')}` }
     function setOuts(n){ outs=n; [ui.o1,ui.o2,ui.o3].forEach((d,i)=> d.classList.toggle('on', i < outs)); }
     function showToast(t){ ui.toast.textContent=t; ui.toast.style.opacity='1'; setTimeout(()=> ui.toast.style.opacity='0', 1100); }
 
     // =============== Math Diagram Helpers (Refined) ===============
-    const BX=260, BY=210; // Vertex B slightly down to leave headroom
+    const BX=260, BY=210; // Vertex B
     function NS(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
     function drawBase(){ ui.svg.innerHTML=''; const bg=NS('rect'); bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',520); bg.setAttribute('height',300); bg.setAttribute('fill','#0b142a'); ui.svg.appendChild(bg); }
     function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#e5e7eb'); el.setAttribute('stroke-width','3'); el.setAttribute('stroke-linecap','round'); return el; }
@@ -200,10 +201,9 @@
 
     function labelABC(A,C){ ui.svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe')); ui.svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe')); ui.svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe')); }
     function labelABCD(A,C,D){ labelABC(A,C); ui.svg.appendChild(textEl(D.x-10,D.y-8,'D','#c7d2fe')); }
-
     function drawRayTo(cx,cy,pt){ ui.svg.appendChild(line(cx,cy,pt.x,pt.y)); }
 
-    // =============== Problem Generators (all refined) ===============
+    // =============== Problem Generators (integer x only) ===============
     function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
     function genRight(){ // rays at 0° and 90°
@@ -221,8 +221,6 @@
       const steps=`(${a}x ${b>=0?'+':''}${b}) + (${c}x ${d>=0?'+':''}${d}) = 180 ⇒ ${(a+c)}x ${b+d>=0?'+':''}${b+d} = 180 ⇒ x = ${x}`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,0), C=polar(BX,BY,140,180), D=polar(BX,BY,140,ri(40,140));
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
-        ui.svg.appendChild(arc(BX,BY,46,0,Math.atan2(BY-D.y,D.x-BX)*180/Math.PI<0? (360+Math.atan2(BY-D.y,D.x-BX)*180/Math.PI) : Math.atan2(BY-D.y,D.x-BX)*180/Math.PI));
-        // arcs explicit using angles 0->D and D->180
         const angD = (()=>{ const deg = Math.atan2(BY-D.y, D.x-BX)*180/Math.PI; return deg<0?deg+360:deg; })();
         ui.svg.appendChild(arc(BX,BY,44,0,angD,'#38bdf8',3));
         ui.svg.appendChild(arc(BX,BY,44,angD,180,'#22d3ee',3));
@@ -252,7 +250,6 @@
       function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
         ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
-        // equal ticks
         ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'var(--tick)',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
         ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
         ui.svg.appendChild(labelNear(BX,BY,64,20+(half/2),`${a}x ${b>=0?'+':''}${b}°`));
@@ -272,22 +269,50 @@
 
     function newProblem(){ current = GENS[ri(0,GENS.length-1)](); ui.prompt.innerHTML = current.prompt; current.draw(); ui.steps.hidden=true; ui.feedback.textContent=''; ui.ans.value=''; ui.check.disabled=false; }
 
-    function parseNum(s){ if(/^[-+]?\d+(?:\.\d+)?$/.test(s)) return Number(s); const m=s.match(/^\s*([-+]?\d+(?:\.\d+)?)\s*\/\s*([-+]?\d+(?:\.\d+)?)\s*$/); if(m){ const n=Number(m[1]), d=Number(m[2]); if(d!==0) return n/d; } return null; }
+    // Integer-only input
+    function parseIntOnly(s){ if(/^[-+]?\d+$/.test(s)) return Number(s); return null; }
 
     // =============== At-bat mini-game ===============
     const ctx = ui.atbat.getContext('2d');
 
-    function drawAtBatBG(){ ctx.clearRect(0,0,520,300); /* plate */ ctx.fillStyle='#e2e8f0'; ctx.save(); ctx.translate(plateX, 240); ctx.rotate(Math.PI/4); ctx.fillRect(-10,-10,20,20); ctx.restore(); /* plate line */ ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(plateX, 240); ctx.lineTo(plateX, 280); ctx.stroke(); }
+    function drawAtBatBG(){
+      ctx.clearRect(0,0,520,300);
+      // plate
+      ctx.fillStyle='#e2e8f0'; ctx.save(); ctx.translate(plateX, 240); ctx.rotate(Math.PI/4); ctx.fillRect(-10,-10,20,20); ctx.restore();
+      // plate line
+      ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(plateX, 240); ctx.lineTo(plateX, 280); ctx.stroke();
+    }
 
-    function startAtBat(){ batting=true; swing=false; ballX=40; ballY=220; ballV=4.2; drawAtBatBG(); requestAnimationFrame(stepAtBat); showToast('At-bat! Swing with SPACE or click'); }
+    function prepAtBatCountdown(){
+      if(countingDown) return;
+      countingDown = true;
+      let c = 3;
+      ui.toast.style.opacity = '1';
+      ui.toast.textContent = `Pitch in ${c}…`;
+      ui.check.disabled = true;
+      ui.ans.disabled = true;
+      countdownTimer = setInterval(()=>{
+        c--;
+        if(c>0){ ui.toast.textContent = `Pitch in ${c}…`; }
+        else{
+          clearInterval(countdownTimer); countingDown=false;
+          ui.toast.textContent = 'Swing!';
+          ui.steps.hidden=true; ui.feedback.textContent='';
+          ui.atbat.style.pointerEvents='auto';
+          startAtBat();
+        }
+      },1000);
+    }
 
-    function stepAtBat(){ if(!batting) return; drawAtBatBG(); // ball
-      ctx.beginPath(); ctx.fillStyle='#f59e0b'; ctx.arc(ballX, ballY, 7, 0, Math.PI*2); ctx.fill(); // bat swing indicator
+    function startAtBat(){ batting=true; swing=false; ballX=40; ballY=220; ballV=4.2; drawAtBatBG(); requestAnimationFrame(stepAtBat); }
+
+    function stepAtBat(){ if(!batting) return; drawAtBatBG();
+      // ball
+      ctx.beginPath(); ctx.fillStyle='#f59e0b'; ctx.arc(ballX, ballY, 7, 0, Math.PI*2); ctx.fill();
+      // bat swing indicator
       if(swing){ ctx.strokeStyle='#22d3ee'; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(plateX, 220, 22, -Math.PI/3, Math.PI/3); ctx.stroke(); }
       ballX += ballV;
-      if(ballX > plateX+40){ // ball passed plate → whiff
-        resolveSwing('out');
-      } else if (batting) { requestAnimationFrame(stepAtBat); }
+      if(ballX > plateX+40){ resolveSwing('out'); } else { requestAnimationFrame(stepAtBat); }
     }
 
     function onSwing(){ if(!batting) return; swing=true; const dist=Math.abs(ballX - plateX); let outcome='out';
@@ -298,7 +323,9 @@
       resolveSwing(outcome);
     }
 
-    function resolveSwing(result){ batting=false; swing=false; ui.atbat.style.pointerEvents='none';
+    function resolveSwing(result){
+      batting=false; swing=false; ui.atbat.style.pointerEvents='none';
+      ui.check.disabled=false; ui.ans.disabled=false;
       if(result==='out'){ setOuts(outs+1); showToast('Whiff — OUT'); checkEnd(); if(running) newProblem(); return; }
       // Hit → points & bases
       hits++; points += 100; ui.hits.textContent=hits; ui.points.textContent=points;
@@ -336,16 +363,24 @@
     function endGame(){ running=false; clearInterval(timer); ui.check.disabled=true; ui.ans.disabled=true; ui.steps.hidden=false; ui.steps.innerHTML='<b>Game Over.</b> Thanks for playing!'; ui.end.classList.add('show'); ui.endRuns.textContent=runs; ui.endHits.textContent=hits; ui.endPoints.textContent=points; }
     function checkEnd(){ if(outs>=3){ endGame(); } }
 
-    // Answer handling
-    function submitAnswer(){ if(!running||batting) return; const v=parseNum(ui.ans.value.trim()); if(v===null){ ui.feedback.textContent='Enter a valid number (e.g., 12 or 25/2)'; return; }
-      if(Math.abs(v - current.x) < 1e-9){ ui.feedback.textContent='✅ Correct! Take your at-bat…'; ui.steps.hidden=false; ui.steps.innerHTML=current.steps; // start at bat
-        setTimeout(()=>{ ui.steps.hidden=true; ui.feedback.textContent=''; ui.atbat.style.pointerEvents='auto'; startAtBat(); }, 500);
-      } else { ui.feedback.textContent='❌ Strike — that\'s an out.'; setOuts(outs+1); checkEnd(); if(running) newProblem(); }
+    // Answer handling (integer only)
+    function submitAnswer(){
+      if(!running||batting||countingDown) return;
+      const v=parseIntOnly(ui.ans.value.trim());
+      if(v===null){ ui.feedback.textContent='Enter a whole number (no decimals).'; return; }
+      if(Math.abs(v - current.x) < 1e-9){
+        ui.feedback.textContent='✅ Correct! Get ready to swing…';
+        ui.steps.hidden=false; ui.steps.innerHTML=current.steps;
+        prepAtBatCountdown();
+      } else {
+        ui.feedback.textContent='❌ Strike — that\'s an out.';
+        setOuts(outs+1); checkEnd(); if(running) newProblem();
+      }
     }
 
     // Controls
     ui.check.addEventListener('click', submitAnswer);
-    ui.skip.addEventListener('click', ()=>{ setOuts(outs+1); showToast('Skip = Out'); checkEnd(); if(running) newProblem(); });
+    ui.skip.addEventListener('click', ()=>{ if(!running||batting||countingDown) return; setOuts(outs+1); showToast('Skip = Out'); checkEnd(); if(running) newProblem(); });
     ui.start.addEventListener('click', startGame);
     ui.restart?.addEventListener('click', startGame);
     ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
