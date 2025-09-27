@@ -98,7 +98,7 @@
         <div class="badge">🏁 Runs: <span id="runs" class="led">0</span></div>
         <div class="badge">⚾ Hits: <span id="hits" class="led">0</span></div>
         <div class="badge outs">🧢 Outs: <span class="dot" id="o1"></span><span class="dot" id="o2"></span><span class="dot" id="o3"></span></div>
-        <button id="start">Start Game</button>
+        <button id="start" onclick="window.__start && window.__start()">Start Game</button>
       </div>
     </header>
 
@@ -429,8 +429,9 @@
     if(document.readyState==='loading'){
       document.addEventListener('DOMContentLoaded', wireControls);
     } else { wireControls(); }
-    
-
+    // Expose a guaranteed global starter and visual ping
+    window.__start = startGame;
+    setTimeout(()=>{ try{ if(ui.toast){ ui.toast.textContent='Ready'; ui.toast.style.opacity='1'; setTimeout(()=> ui.toast.style.opacity='0', 900); } }catch(_){} }, 150);
     // Initial draw
     drawBase(); drawRunners();
   </script>
