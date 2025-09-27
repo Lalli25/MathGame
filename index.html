@@ -257,8 +257,7 @@
       const steps=`Bisector ⇒ m∠ABD = m∠DBC = ${half}°. So ${a}x ${b>=0?'+':''}${b} = ${half} and ${c}x ${d>=0?'+':''}${d} = ${half} ⇒ x = ${x}.`;
       function draw(){ drawBase(); const A=polar(BX,BY,140,20), C=polar(BX,BY,140,20+total), D=polar(BX,BY,140,20+half);
         drawRayTo(BX,BY,A); drawRayTo(BX,BY,C); drawRayTo(BX,BY,D);
-        ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3));
-        ui.svg.appendChild(arc(BX,BY,54,28,20+half-8,'var(--tick)',2)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
+        ui.svg.appendChild(arc(BX,BY,44,20,20+half,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,44,20+half,20+total,'#38bdf8',3)); ui.svg.appendChild(arc(BX,BY,54,20+half+8,20+total-8,'var(--tick)',2));
         ui.svg.appendChild(dot(BX,BY)); labelABCD(A,C,D);
         ui.svg.appendChild(labelNear(BX,BY,64,20+(half/2),`${a}x ${b>=0?'+':''}${b}°`));
         ui.svg.appendChild(labelNear(BX,BY,64,20+half+(half/2),`${c}x ${d>=0?'+':''}${d}°`)); }
