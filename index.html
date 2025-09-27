@@ -189,13 +189,28 @@
     // =============== Math Diagram Helpers (NO ARCS) ===============
     const BX=260, BY=210; const RAD=120; // ensure full diagram fits // Vertex B
     function NS(tag){ return document.createElementNS('http://www.w3.org/2000/svg', tag); }
-    function drawBase(){ ui.svg.innerHTML=''; const bg=NS('rect'); bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',520); bg.setAttribute('height',300); bg.setAttribute('fill','#0b142a'); ui.svg.appendChild(bg); }
-    function line(x1,y1,x2,y2){ const el=NS('line'); el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2); el.setAttribute('stroke','#e5e7eb'); el.setAttribute('stroke-width','3'); el.setAttribute('stroke-linecap','round'); return el; }
+    function drawBase(){
+      ui.svg.innerHTML='';
+      const bg=NS('rect');
+      bg.setAttribute('x',0); bg.setAttribute('y',0);
+      bg.setAttribute('width',520); bg.setAttribute('height',300);
+      bg.setAttribute('fill','#0b142a');
+      ui.svg.appendChild(bg);
+    }
+    function line(x1,y1,x2,y2){
+      const el=NS('line');
+      el.setAttribute('x1',x1); el.setAttribute('y1',y1);
+      el.setAttribute('x2',x2); el.setAttribute('y2',y2);
+      el.setAttribute('stroke','#ffffff');
+      el.setAttribute('stroke-width','4');
+      el.setAttribute('stroke-linecap','round');
+      return el;
+    }
     function dot(x,y){ const c=NS('circle'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',4); c.setAttribute('fill','#38bdf8'); return c; }
     function textEl(x,y,t,fill='#facc15'){ const el=NS('text'); el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('fill',fill); el.setAttribute('font-weight','800'); el.setAttribute('font-size','15'); el.textContent=t; return el; }
     function polar(cx,cy,r,a){ const R=a*Math.PI/180; return {x: cx + r*Math.cos(R), y: cy - r*Math.sin(R)} }
     function rightMarker(cx,cy,size=18){ const p1=polar(cx,cy,size,0), p2=polar(cx,cy,size,90); const t=NS('path'); t.setAttribute('d',`M ${cx} ${cy} L ${p1.x} ${p1.y} L ${p1.x+p2.x-cx} ${p1.y+p2.y-cy} L ${p2.x} ${p2.y} Z`); t.setAttribute('fill','#22d3ee'); t.setAttribute('opacity','0.35'); t.setAttribute('stroke','#38bdf8'); t.setAttribute('stroke-width','2'); return t; }
-    function labelNear(cx,cy,rad,aMid,text){ /* removed in favor of label panel */ return textEl(cx,cy,''); }
+    function { /* removed in favor of label panel */ return textEl(cx,cy,''); }
 
     function labelABC(A,C){ ui.svg.appendChild(textEl(A.x+6,A.y+18,'A','#c7d2fe')); ui.svg.appendChild(textEl(BX-16,BY+18,'B','#c7d2fe')); ui.svg.appendChild(textEl(C.x-14,C.y-8,'C','#c7d2fe')); }
     function labelABCD(A,C,D){ labelABC(A,C); ui.svg.appendChild(textEl(D.x-10,D.y-8,'D','#c7d2fe')); }
