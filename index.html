@@ -413,13 +413,23 @@
     }
 
     // Controls
-    ui.check.addEventListener('click', submitAnswer);
-    ui.skip.addEventListener('click', ()=>{ if(!running||batting||countingDown) return; setOuts(outs+1); showToast('Skip = Out'); checkEnd(); if(running) newProblem(); });
-    ui.start?.addEventListener('click', startGame);
-    ui.restart?.addEventListener('click', startGame);
-    ui.ans.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
-    window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); onSwing(); } });
-    ui.atbat.addEventListener('click', onSwing);
+    function wireControls(){
+      try{
+        ui.check?.addEventListener('click', submitAnswer);
+        ui.skip?.addEventListener('click', ()=>{ if(!running||batting||countingDown) return; setOuts(outs+1); showToast('Skip = Out'); checkEnd(); if(running) newProblem(); });
+        ui.start?.addEventListener('click', ()=>{ showToast('Starting…'); startGame(); });
+        ui.restart?.addEventListener('click', startGame);
+        ui.ans?.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAnswer(); });
+        window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); onSwing(); } });
+        ui.atbat?.addEventListener('click', onSwing);
+        // Extra: global start fallback
+        window.__start = startGame;
+      } catch(err){ reportErr('Control wiring failed: '+(err.message||err)); }
+    }
+    if(document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded', wireControls);
+    } else { wireControls(); }
+    
 
     // Initial draw
     drawBase(); drawRunners();
