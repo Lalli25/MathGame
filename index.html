@@ -402,7 +402,7 @@
     }
 
     function pickGenerator(){
-      if(qCount < 3) return EASY[ri(0,EASY.length-1)]; // warm-up
+      if(qCount < 1) return EASY[ri(0,EASY.length-1)]; // only 1 warm-up
       if(qCount < 9) return MEDIUM[ri(0,MEDIUM.length-1)]; // practice
       // late game: mix but bias to HARD
       const r=Math.random();
